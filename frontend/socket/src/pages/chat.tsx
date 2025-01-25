@@ -3,9 +3,15 @@ import io, { Socket } from "socket.io-client";
 import * as cookie from "cookie";
 import Contactlist from "../components/contact";
 
+interface Message {
+  id: number;
+  content: string;
+  senderUsername: string;
+}
+
 export default function ChatApp() {
-  const [messagesMap, setMessagesMap] = useState<Map<string, string[]>>(new Map());
-  const [visibleMessages, setVisibleMessages] = useState<string[]>([]);
+  const [messagesMap, setMessagesMap] = useState<Map<string, Message[]>>(new Map());
+  const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [addUserInput, setAddUserInput] = useState<string>("");
   const socket = useRef<Socket>();
@@ -29,7 +35,7 @@ export default function ChatApp() {
       }
     });
 
-    socket.current.on("chat message", ({ message, username }: { message: string; username: string }) => {
+    socket.current.on("chat message", ({ message, username }: { message: Message; username: string }) => {
       setMessagesMap((prevMessages) => {
         const friendMessages = prevMessages.get(username) || [];
         prevMessages.set(username, [...friendMessages, message]);
@@ -38,6 +44,16 @@ export default function ChatApp() {
       if (username === currentChat.current) {
         setVisibleMessages((prevMessages) => [...prevMessages, message]);
       }
+    });
+
+    socket.current.on("delete-message", ({ messageId }: { messageId: number }) => {
+      setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
+      setMessagesMap((prevMessages) => {
+        const friendMessages = prevMessages.get(currentChat.current) || [];
+        const updatedMessages = friendMessages.filter((message) => message.id !== messageId);
+        prevMessages.set(currentChat.current, updatedMessages);
+        return new Map(prevMessages);
+      });
     });
 
     fetch("http://localhost:3000/verify", {
@@ -72,7 +88,11 @@ export default function ChatApp() {
       })
         .then((response) => response.json())
         .then((data) => {
-          const messages = data.map((message: any) => message.content);
+          const messages = data.map((message: any) => ({
+            id: message.id,
+            content: message.content,
+            senderUsername: message.sender.username
+          }));
           setMessagesMap((prevMessages) => {
             prevMessages.set(currentChat.current, messages);
             return new Map(prevMessages);
@@ -94,17 +114,18 @@ export default function ChatApp() {
           friendUsername: currentChat.current,
         }),
       })
-      
+        .then((response) => response.json())
+        .then((newMessage) => {
+          socket.current?.emit("chat message", { message: newMessage, username: currentChat.current });
 
-      socket.current?.emit("chat message", { message: inputValue, username: currentChat.current });
-
-      setMessagesMap((prevMessages) => {
-        const friendMessages = prevMessages.get(currentChat.current) || [];
-        prevMessages.set(currentChat.current, [...friendMessages, `You: ${inputValue}`]);
-        return new Map(prevMessages);
-      });
-      setVisibleMessages((prevMessages) => [...prevMessages, `You: ${inputValue}`]);
-      setInputValue("");
+          setMessagesMap((prevMessages) => {
+            const friendMessages = prevMessages.get(currentChat.current) || [];
+            prevMessages.set(currentChat.current, [...friendMessages, newMessage]);
+            return new Map(prevMessages);
+          });
+          setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
+          setInputValue("");
+        });
     }
   };
 
@@ -159,31 +180,23 @@ export default function ChatApp() {
       });
   };
 
-  const handleDeleteMessage = (messageIndex: number) => {
-    const messageToDelete = visibleMessages[messageIndex];
+  const handleDeleteMessage = (messageId: number) => {
     fetch("http://localhost:3000/delete-message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username,
-        friendUsername: currentChat.current,
-        message: messageToDelete,
+        messageId,
       }),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.message === "Success") {
-          setVisibleMessages((prevMessages) => prevMessages.filter((_, index) => index !== messageIndex));
-          setMessagesMap((prevMessages) => {
-            const friendMessages = prevMessages.get(currentChat.current) || [];
-            friendMessages.splice(messageIndex, 1);
-            prevMessages.set(currentChat.current, friendMessages);
-            return new Map(prevMessages);
-          });
-        } else {
-          console.error(data.error || "Failed to delete message");
-        }
-      });
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.message === "Message deleted successfully") {
+        socket.current?.emit("delete-message", { messageId });
+      } else {
+        console.error(data.error || "Failed to delete message");
+      }
+    });
   };
 
   if (authenticated === "loading") return <div>Loading...</div>;
@@ -213,12 +226,12 @@ export default function ChatApp() {
       />
       <main className="flex-grow p-4 overflow-y-auto">
         <div className="flex flex-col space-y-4">
-          {visibleMessages.map((message, index) => (
-            <div key={index} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.startsWith("You: ") ? "bg-blue-100" : ""}`}>
-              <span>{message}</span>
-              {message.startsWith("You: ") && (
+          {visibleMessages.map((message) => (
+            <div key={message.id} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.senderUsername === username ? "bg-blue-100" : ""}`}>
+              <span>{message.content}</span>
+              {message.senderUsername === username && (
                 <button
-                  onClick={() => handleDeleteMessage(index)}
+                  onClick={() => handleDeleteMessage(message.id)}
                   className="text-red-500 hover:text-red-700 transition duration-300"
                 >
                   Delete

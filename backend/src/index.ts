@@ -150,6 +150,10 @@ app.get("/getmessages", async (req, res) => {
           receiverId: sender?.id
         }
       ]
+    },
+    include: {
+      sender: true, // Include the sender field
+      receiver: true // Include the receiver field
     }
   });
   res.json(messages);
@@ -256,35 +260,57 @@ app.post("/delete-friend", async (req, res) => {
   res.json({ message: "Success" });
 });
 
-// Delete Message
+//delete
 app.post("/delete-message", async (req, res) => {
-  const { username, friendUsername, message } = req.body;
+  const { username, messageId } = req.body;
 
-  const sender = await prisma.user.findUnique({
-    where: { username }
-  });
+  console.log("Delete request received:", { username, messageId }); // Debugging log
 
-  const receiver = await prisma.user.findUnique({
-    where: { username: friendUsername }
-  });
-
-  if (!sender || !receiver) {
-    res.status(404).json({ error: "User not found" });
+  if (!messageId) {
+    res.status(400).json({ error: "Message ID is required" });
     return;
   }
 
-  const deletedMessage = await prisma.message.deleteMany({
-    where: {
-      content: message,
-      senderId: sender.id,
-      receiverId: receiver.id
-    }
-  });
+  if (!username) {
+    res.status(400).json({ error: "Username is required" });
+    return;
+  }
 
-  if (deletedMessage.count > 0) {
-    res.json({ message: "Success" });
-  } else {
-    res.status(404).json({ error: "Message not found or you are not the sender" });
+  try {
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: { sender: true, receiver: true }
+    });
+
+    if (!message) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
+
+    if (message.sender.username !== username && message.receiver.username !== username) {
+      res.status(403).json({ error: "You can only delete your own messages" });
+      return;
+    }
+
+    await prisma.message.delete({
+      where: { id: messageId }
+    });
+
+    const senderSocketId = map.get(message.sender.username);
+    const receiverSocketId = map.get(message.receiver.username);
+
+    if (senderSocketId) {
+      io.to(senderSocketId).emit('delete-message', { messageId });
+    }
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('delete-message', { messageId });
+    }
+
+    res.json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Error in delete-message route:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -292,7 +318,7 @@ io.on("connection", (socket) => {
   socket.on('chat message', (data: any) => {
     const { message, username } = data;
     const recipientSocketId = map.get(username);
-    console.log("Recipient:", recipientSocketId, message, username);
+    console.log("Recipient:", message.id);
     if (recipientSocketId) {
       io.to(recipientSocketId).emit('chat message', { message, username: socket.data.username });
     }
@@ -306,6 +332,58 @@ io.on("connection", (socket) => {
 
   socket.on('disconnect', () => {
     map.delete(socket.data.username);
+  });
+
+  socket.on('delete-message', async (data: any) => {
+    const { messageId, username } = data;
+    console.log("Delete request received:", { messageId, username }); // Debugging log
+
+    if (!messageId) {
+      socket.emit('delete-message', { error: "Message ID is required" });
+      return;
+    }
+
+    if (!username) {
+      socket.emit('delete-message', { error: "Username is required" });
+      return;
+    }
+
+    try {
+      const message = await prisma.message.findUnique({
+        where: { id: messageId },
+        include: { sender: true, receiver: true }
+      });
+
+      if (!message) {
+        socket.emit('delete-message', { error: "Message not found" });
+        return;
+      }
+
+      if (message.sender.username !== username && message.receiver.username !== username) {
+        socket.emit('delete-message', { error: "You can only delete your own messages" });
+        return;
+      }
+
+      await prisma.message.delete({
+        where: { id: messageId }
+      });
+
+      const senderSocketId = map.get(message.sender.username);
+      const receiverSocketId = map.get(message.receiver.username);
+
+      if (senderSocketId) {
+        io.to(senderSocketId).emit('delete-message', { messageId });
+      }
+
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('delete-message', { messageId });
+      }
+
+      socket.emit('delete-message', { message: "Message deleted successfully" });
+    } catch (error) {
+      console.error("Error in delete-message route:", error);
+      socket.emit('delete-message', { error: "Internal server error" });
+    }
   });
 });
 
