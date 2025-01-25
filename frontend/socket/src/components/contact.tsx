@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import cookie from 'cookie';
+import * as cookie from "cookie";
 
 export default function Contactlist({ contacts, setcontact }: { contacts: string[], setcontact: any }) {
     const [localContacts, setLocalContacts] = useState<string[]>(contacts);

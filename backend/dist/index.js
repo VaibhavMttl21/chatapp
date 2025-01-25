@@ -22,7 +22,7 @@ const app = (0, express_1.default)();
 const server = (0, node_http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: "http://localhost:5173",
+        origin: ["http://localhost:5173", "https://ms3fdsn4-5173.inc1.devtunnels.ms"],
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -31,7 +31,7 @@ const prisma = new client_1.PrismaClient();
 const map = new Map();
 const buildPath = (0, node_path_1.join)(__dirname, "../../frontend/socket/dist");
 app.use((0, cors_1.default)({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "https://ms3fdsn4-5173.inc1.devtunnels.ms"],
     methods: ["GET", "POST"],
     credentials: true
 })); // Enable CORS for all routes
@@ -39,15 +39,25 @@ app.use(express_1.default.static(buildPath));
 app.use(express_1.default.json()); // To parse JSON bodies
 // Signup
 app.post("/signup", (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        res.status(400).json({ error: "Enter valid username or password" });
+    }
     prisma.user.create({
         data: {
-            username: req.body.username || "",
-            password: req.body.password || ""
+            username: username,
+            password: password
         }
     }).then((data) => {
         res.json(data);
     }).catch((error) => {
-        res.status(502).json({ error: "username already exist" });
+        var _a;
+        if (error.code === 'P2002' && ((_a = error.meta) === null || _a === void 0 ? void 0 : _a.target.includes('username'))) {
+            res.status(409).json({ error: "Username already exists" });
+        }
+        else {
+            res.status(502).json({ error: "An error occurred" });
+        }
     });
 });
 // Signin
@@ -208,6 +218,68 @@ io.use((socket, next) => {
     console.log(socket.data.username);
     next();
 });
+// Delete Friend
+app.post("/delete-friend", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, friendUsername } = req.body;
+    const user = yield prisma.user.findUnique({
+        where: {
+            username: username
+        }
+    });
+    const friend = yield prisma.user.findUnique({
+        where: {
+            username: friendUsername
+        }
+    });
+    if (!user || !friend) {
+        res.status(404).json({ error: "User not found" });
+        return;
+    }
+    yield prisma.user.update({
+        where: { id: user.id },
+        data: {
+            friends: {
+                disconnect: { id: friend.id }
+            }
+        }
+    });
+    yield prisma.user.update({
+        where: { id: friend.id },
+        data: {
+            friends: {
+                disconnect: { id: user.id }
+            }
+        }
+    });
+    res.json({ message: "Success" });
+}));
+// Delete Message
+app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, friendUsername, message } = req.body;
+    const sender = yield prisma.user.findUnique({
+        where: { username }
+    });
+    const receiver = yield prisma.user.findUnique({
+        where: { username: friendUsername }
+    });
+    if (!sender || !receiver) {
+        res.status(404).json({ error: "User not found" });
+        return;
+    }
+    const deletedMessage = yield prisma.message.deleteMany({
+        where: {
+            content: message,
+            senderId: sender.id,
+            receiverId: receiver.id
+        }
+    });
+    if (deletedMessage.count > 0) {
+        res.json({ message: "Success" });
+    }
+    else {
+        res.status(404).json({ error: "Message not found or you are not the sender" });
+    }
+}));
 io.on("connection", (socket) => {
     socket.on('chat message', (data) => {
         const { message, username } = data;

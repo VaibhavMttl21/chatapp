@@ -9,7 +9,7 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -19,7 +19,7 @@ const map = new Map<string, string>();
 const buildPath = join(__dirname, "../../frontend/socket/dist");
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms"],
   methods: ["GET", "POST"],
   credentials: true
 })); // Enable CORS for all routes
@@ -28,15 +28,25 @@ app.use(express.json()); // To parse JSON bodies
 
 // Signup
 app.post("/signup", (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+     res.status(400).json({ error: "Enter valid username or password" });
+  }
+
   prisma.user.create({
     data: {
-      username: req.body.username || "",
-      password: req.body.password || ""
+      username: username,
+      password: password
     }
   }).then((data) => {
     res.json(data);
   }).catch((error) => {
-    res.status(502).json({ error: "username already exist" });
+    if (error.code === 'P2002' && error.meta?.target.includes('username')) {
+      res.status(409).json({ error: "Username already exists" });
+    } else {
+      res.status(502).json({ error: "An error occurred" });
+    }
   });
 });
 
@@ -206,6 +216,76 @@ io.use((socket, next) => {
   }
   console.log(socket.data.username);
   next();
+});
+
+// Delete Friend
+app.post("/delete-friend", async (req, res) => {
+  const { username, friendUsername } = req.body;
+  const user = await prisma.user.findUnique({
+    where: {
+      username: username
+    }
+  });
+  const friend = await prisma.user.findUnique({
+    where: {
+      username: friendUsername
+    }
+  });
+  if (!user || !friend) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      friends: {
+        disconnect: { id: friend.id }
+      }
+    }
+  });
+
+  await prisma.user.update({
+    where: { id: friend.id },
+    data: {
+      friends: {
+        disconnect: { id: user.id }
+      }
+    }
+  });
+  res.json({ message: "Success" });
+});
+
+// Delete Message
+app.post("/delete-message", async (req, res) => {
+  const { username, friendUsername, message } = req.body;
+
+  const sender = await prisma.user.findUnique({
+    where: { username }
+  });
+
+  const receiver = await prisma.user.findUnique({
+    where: { username: friendUsername }
+  });
+
+  if (!sender || !receiver) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const deletedMessage = await prisma.message.deleteMany({
+    where: {
+      content: message,
+      senderId: sender.id,
+      receiverId: receiver.id
+    }
+  });
+
+  if (deletedMessage.count > 0) {
+    res.json({ message: "Success" });
+  } else {
+    res.status(404).json({ error: "Message not found or you are not the sender" });
+  }
 });
 
 io.on("connection", (socket) => {
