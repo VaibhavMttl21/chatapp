@@ -386,8 +386,8 @@ io.on("connection", (socket) => {
         const senderSocketId = map.get(username);
         const receiverSocketId = map.get(friendUsername);
         node_inspector_1.console.log("Delete request received:", { messageId, username });
-        node_inspector_1.console.log(senderSocketId); // Debugging log
-        node_inspector_1.console.log(receiverSocketId); // Debugging log
+        // console.log(senderSocketId) // Debugging log
+        // console .log(receiverSocketId) // Debugging log
         io.to([senderSocketId || "", receiverSocketId || ""]).emit("delete-message", { messageId });
     }));
 });

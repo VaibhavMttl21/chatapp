@@ -2,6 +2,8 @@ import { useState, useEffect, FormEvent, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import * as cookie from "cookie";
 import Contactlist from "../components/contact";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface Message {
   id: number;
@@ -144,6 +146,7 @@ export default function ChatApp() {
             setContacts((prevContacts) => [...prevContacts, addUserInput]);
             setAddUserInput("");
             setAddUserError("");
+            toast.success("User added successfully!");
           } else {
             setAddUserError(data.error || "Failed to add friend");
           }
@@ -164,9 +167,11 @@ export default function ChatApp() {
       .then((data) => {
         if (data.message === "Success") {
           setContacts((prevContacts) => prevContacts.filter((contact) => contact !== friendUsername));
+          toast.success("User deleted successfully!");
           if (currentChat.current === friendUsername) {
             currentChat.current = "";
             setVisibleMessages([]);
+           
           }
         } else {
           console.error(data.error || "Failed to delete friend");
@@ -218,6 +223,7 @@ export default function ChatApp() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-700">
+      <ToastContainer />
       <header className="bg-blue-500 text-white p-4 text-center">
         <h1 className="text-2xl">Chat App</h1>
       </header>
