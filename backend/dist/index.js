@@ -18,6 +18,7 @@ const node_path_1 = require("node:path");
 const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
+const node_inspector_1 = require("node:inspector");
 const app = (0, express_1.default)();
 const server = (0, node_http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
@@ -214,12 +215,12 @@ app.get("/getfriends", (req, res) => __awaiter(void 0, void 0, void 0, function*
 }));
 io.use((socket, next) => {
     var _a;
-    console.log("Query:", socket.handshake.headers.cookie);
+    node_inspector_1.console.log("Query:", socket.handshake.headers.cookie);
     socket.data.username = (_a = socket.handshake.headers.cookie) === null || _a === void 0 ? void 0 : _a.split("=")[1];
     if (!socket.data.username) {
         return next(new Error("Authentication"));
     }
-    console.log(socket.data.username);
+    node_inspector_1.console.log(socket.data.username);
     next();
 });
 // Delete Friend
@@ -260,7 +261,7 @@ app.post("/delete-friend", (req, res) => __awaiter(void 0, void 0, void 0, funct
 //delete
 app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, messageId } = req.body;
-    console.log("Delete request received:", { username, messageId }); // Debugging log
+    node_inspector_1.console.log("Delete request received:", { username, messageId }); // Debugging log
     if (!messageId) {
         res.status(400).json({ error: "Message ID is required" });
         return;
@@ -274,10 +275,12 @@ app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, func
             where: { id: messageId },
             include: { sender: true, receiver: true }
         });
+        node_inspector_1.console.log('MESSAGEGHFHGFGGFHGHFFG', message);
         if (!message) {
-            res.status(404).json({ error: "Message not found" });
+            res.status(404).json({ error: "Message not foundddddd" });
             return;
         }
+        node_inspector_1.console.log("reached");
         if (message.sender.username !== username && message.receiver.username !== username) {
             res.status(403).json({ error: "You can only delete your own messages" });
             return;
@@ -296,30 +299,82 @@ app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, func
         res.json({ message: "Message deleted successfully" });
     }
     catch (error) {
-        console.error("Error in delete-message route:", error);
-        res.status(500).json({ error: "Internal server error" });
+        node_inspector_1.console.log(error);
+        if (error.code === 'P2025') {
+            res.status(404).json({ error: "Message not found" });
+        }
+        else {
+            node_inspector_1.console.error("Error in delete-message route:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
     }
 }));
 io.on("connection", (socket) => {
-    socket.on('chat message', (data) => {
-        const { message, username } = data;
-        const recipientSocketId = map.get(username);
-        console.log("Recipient:", message.id);
-        if (recipientSocketId) {
-            io.to(recipientSocketId).emit('chat message', { message, username: socket.data.username });
+    socket.on("chat message", (data) => __awaiter(void 0, void 0, void 0, function* () {
+        const { message, username, friendUsername } = data;
+        try {
+            // Retrieve sender and receiver from the database
+            const sender = yield prisma.user.findUnique({
+                where: { username },
+            });
+            const receiver = yield prisma.user.findUnique({
+                where: { username: friendUsername },
+            });
+            if (!sender || !receiver) {
+                socket.emit("chat message", { error: "User not found" });
+                return;
+            }
+            // Store the message in the database
+            const newMessage = yield prisma.message.create({
+                data: {
+                    content: message,
+                    sender: {
+                        connect: { id: sender.id },
+                    },
+                    receiver: {
+                        connect: { id: receiver.id },
+                    },
+                },
+                include: {
+                    sender: true,
+                    receiver: true,
+                },
+            });
+            // Emit the message to the receiver (if online)
+            const recipientSocketId = map.get(friendUsername);
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit("chat message", {
+                    message: newMessage,
+                    senderUsername: sender.username,
+                    id: message.id
+                });
+            }
+            const senderSocketId = map.get(username);
+            // Emit the message back to the sender
+            if (senderSocketId) {
+                io.to(senderSocketId).emit("chat message", {
+                    message: newMessage,
+                    senderUsername: sender.username,
+                    id: message.id
+                });
+            }
         }
-    });
+        catch (error) {
+            node_inspector_1.console.error("Error handling chat message:", error);
+            socket.emit("chat message", { error: "Failed to send message" });
+        }
+    }));
     socket.on('setusername', (username) => {
         map.set(username, socket.id);
         socket.data.username = username;
-        console.log(map);
+        node_inspector_1.console.log(map);
     });
     socket.on('disconnect', () => {
         map.delete(socket.data.username);
     });
     socket.on('delete-message', (data) => __awaiter(void 0, void 0, void 0, function* () {
-        const { messageId, username } = data;
-        console.log("Delete request received:", { messageId, username }); // Debugging log
+        const { message, username, friendUsername, messageId } = data;
+        node_inspector_1.console.log("Delete request received:", { messageId, username }); // Debugging log
         if (!messageId) {
             socket.emit('delete-message', { error: "Message ID is required" });
             return;
@@ -328,38 +383,14 @@ io.on("connection", (socket) => {
             socket.emit('delete-message', { error: "Username is required" });
             return;
         }
-        try {
-            const message = yield prisma.message.findUnique({
-                where: { id: messageId },
-                include: { sender: true, receiver: true }
-            });
-            if (!message) {
-                socket.emit('delete-message', { error: "Message not found" });
-                return;
-            }
-            if (message.sender.username !== username && message.receiver.username !== username) {
-                socket.emit('delete-message', { error: "You can only delete your own messages" });
-                return;
-            }
-            yield prisma.message.delete({
-                where: { id: messageId }
-            });
-            const senderSocketId = map.get(message.sender.username);
-            const receiverSocketId = map.get(message.receiver.username);
-            if (senderSocketId) {
-                io.to(senderSocketId).emit('delete-message', { messageId });
-            }
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit('delete-message', { messageId });
-            }
-            socket.emit('delete-message', { message: "Message deleted successfully" });
-        }
-        catch (error) {
-            console.error("Error in delete-message route:", error);
-            socket.emit('delete-message', { error: "Internal server error" });
-        }
+        const senderSocketId = map.get(username);
+        const receiverSocketId = map.get(friendUsername);
+        node_inspector_1.console.log("Delete request received:", { messageId, username });
+        node_inspector_1.console.log(senderSocketId); // Debugging log
+        node_inspector_1.console.log(receiverSocketId); // Debugging log
+        io.to([senderSocketId || "", receiverSocketId || ""]).emit("delete-message", { messageId });
     }));
 });
 server.listen(3000, () => {
-    console.log("Server running at http://localhost:3000");
+    node_inspector_1.console.log("Server running at http://localhost:3000");
 });

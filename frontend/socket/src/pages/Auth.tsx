@@ -111,7 +111,7 @@ export default function Auth() {
         {iconPositions.map((pos, i) => (
           <div
             key={i}
-            className="absolute text-gray-700 opacity-40 animate-float"
+            className="absolute text-gray-700 opacity-10 animate-float"
             style={{
               top: `${pos.y}px`,
               left: `${pos.x}px`,

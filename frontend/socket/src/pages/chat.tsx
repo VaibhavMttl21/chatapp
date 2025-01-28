@@ -7,6 +7,7 @@ interface Message {
   id: number;
   content: string;
   senderUsername: string;
+  timestamp: string;
 }
 
 export default function ChatApp() {
@@ -35,27 +36,38 @@ export default function ChatApp() {
       }
     });
 
-    socket.current.on("chat message", ({ message, username }: { message: Message; username: string }) => {
+    socket.current.on("chat message", (message:any) => {
+      console.log(message)
+      const newMessage={
+        id:message.message.id,
+        senderUsername:message.senderUsername,
+        content:message.message.content,
+        timestamp:message.message.timestamp
+
+      } as Message
       setMessagesMap((prevMessages) => {
-        const friendMessages = prevMessages.get(username) || [];
-        prevMessages.set(username, [...friendMessages, message]);
+        const friendMessages = prevMessages.get(message.senderUsername) || [];
+        prevMessages.set(message.senderUsername, [...friendMessages, newMessage]);
         return new Map(prevMessages);
       });
-      if (username === currentChat.current) {
-        setVisibleMessages((prevMessages) => [...prevMessages, message]);
+      if (message.senderUsername === currentChat.current || username === message.senderUsername) {
+        setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
+        
       }
     });
-
+    
     socket.current.on("delete-message", ({ messageId }: { messageId: number }) => {
-      setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
       setMessagesMap((prevMessages) => {
-        const friendMessages = prevMessages.get(currentChat.current) || [];
-        const updatedMessages = friendMessages.filter((message) => message.id !== messageId);
-        prevMessages.set(currentChat.current, updatedMessages);
-        return new Map(prevMessages);
+        const updatedMessagesMap = new Map(prevMessages);
+        updatedMessagesMap.forEach((messages, username) => {
+          const updatedMessages = messages.filter((message) => message.id !== messageId);
+          updatedMessagesMap.set(username, updatedMessages);
+        });
+        return updatedMessagesMap;
       });
+    
+      setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
     });
-
     fetch("http://localhost:3000/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -78,7 +90,6 @@ export default function ChatApp() {
       socket.current?.disconnect();
     };
   }, [username]);
-
   useEffect(() => {
     if (currentChat.current) {
       fetch(`http://localhost:3000/getmessages/?username=${username}&&friend=${currentChat.current}`, {
@@ -91,7 +102,8 @@ export default function ChatApp() {
           const messages = data.map((message: any) => ({
             id: message.id,
             content: message.content,
-            senderUsername: message.sender.username
+            senderUsername: message.sender.username,
+            timestamp: message.timestamp
           }));
           setMessagesMap((prevMessages) => {
             prevMessages.set(currentChat.current, messages);
@@ -104,28 +116,10 @@ export default function ChatApp() {
 
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
-    if (socket && inputValue.trim() && currentChat.current) {
-      fetch("http://localhost:3000/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: inputValue,
-          username,
-          friendUsername: currentChat.current,
-        }),
-      })
-        .then((response) => response.json())
-        .then((newMessage) => {
-          socket.current?.emit("chat message", { message: newMessage, username: currentChat.current });
-
-          setMessagesMap((prevMessages) => {
-            const friendMessages = prevMessages.get(currentChat.current) || [];
-            prevMessages.set(currentChat.current, [...friendMessages, newMessage]);
-            return new Map(prevMessages);
-          });
-          setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
-          setInputValue("");
-        });
+    if (inputValue.trim() && currentChat.current) {
+      // Emit the message to the server to store it in the database and then emit it to the receiver
+      socket.current?.emit("chat message", { message: inputValue, username, friendUsername: currentChat.current });
+      setInputValue("");
     }
   };
 
@@ -181,6 +175,19 @@ export default function ChatApp() {
   };
 
   const handleDeleteMessage = (messageId: number) => {
+    // Emit the delete event to the server
+    socket.current?.emit("delete-message", { messageId, username });
+
+    // Update the UI immediately
+    setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
+    setMessagesMap((prevMessages) => {
+      const friendMessages = prevMessages.get(currentChat.current) || [];
+      const updatedMessages = friendMessages.filter((message) => message.id !== messageId);
+      prevMessages.set(currentChat.current, updatedMessages);
+      return new Map(prevMessages);
+    });
+
+    // Send the delete request to the server
     fetch("http://localhost:3000/delete-message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -191,9 +198,8 @@ export default function ChatApp() {
     })
     .then((response) => response.json())
     .then((data) => {
-      if (data.message === "Message deleted successfully") {
-        socket.current?.emit("delete-message", { messageId });
-      } else {
+      console.log(data)
+      if (data.error) {
         console.error(data.error || "Failed to delete message");
       }
     });
@@ -227,8 +233,9 @@ export default function ChatApp() {
       <main className="flex-grow p-4 overflow-y-auto">
         <div className="flex flex-col space-y-4">
           {visibleMessages.map((message) => (
+            console.log(message),
             <div key={message.id} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.senderUsername === username ? "bg-blue-100" : ""}`}>
-              <span>{message.content}</span>
+              <span>{message.content} {message.timestamp}</span>
               {message.senderUsername === username && (
                 <button
                   onClick={() => handleDeleteMessage(message.id)}
@@ -282,6 +289,14 @@ export default function ChatApp() {
               </li>
             ))}
           </ul>
+          <button >
+          <a
+                  href="/"
+                  className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300"
+                >
+                  LOGOUT
+                </a>
+          </button>
         </div>
       </footer>
     </div>
