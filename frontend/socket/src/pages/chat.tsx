@@ -1,9 +1,9 @@
 import { useState, useEffect, FormEvent, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import * as cookie from "cookie";
-import Contactlist from "../components/contact";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import EmojiPicker from "emoji-picker-react";
 
 interface Message {
   id: number;
@@ -22,8 +22,12 @@ export default function ChatApp() {
   const currentChat = useRef<string>(""); 
   const [contacts, setContacts] = useState<string[]>([]);
   const [addUserError, setAddUserError] = useState<string>("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
   const cookies = cookie.parse(document.cookie);
   const username = cookies.username;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
 
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });
@@ -38,15 +42,13 @@ export default function ChatApp() {
       }
     });
 
-    socket.current.on("chat message", (message:any) => {
-      console.log(message)
-      const newMessage={
-        id:message.message.id,
-        senderUsername:message.senderUsername,
-        content:message.message.content,
-        timestamp:message.message.timestamp
-
-      } as Message
+    socket.current.on("chat message", (message: any) => {
+      const newMessage = {
+        id: message.message.id,
+        senderUsername: message.senderUsername,
+        content: message.message.content,
+        timestamp: message.message.timestamp,
+      } as Message;
       setMessagesMap((prevMessages) => {
         const friendMessages = prevMessages.get(message.senderUsername) || [];
         prevMessages.set(message.senderUsername, [...friendMessages, newMessage]);
@@ -54,10 +56,9 @@ export default function ChatApp() {
       });
       if (message.senderUsername === currentChat.current || username === message.senderUsername) {
         setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
-        
       }
     });
-    
+
     socket.current.on("delete-message", ({ messageId }: { messageId: number }) => {
       setMessagesMap((prevMessages) => {
         const updatedMessagesMap = new Map(prevMessages);
@@ -67,9 +68,10 @@ export default function ChatApp() {
         });
         return updatedMessagesMap;
       });
-    
+
       setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
     });
+
     fetch("http://localhost:3000/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,6 +94,7 @@ export default function ChatApp() {
       socket.current?.disconnect();
     };
   }, [username]);
+
   useEffect(() => {
     if (currentChat.current) {
       fetch(`http://localhost:3000/getmessages/?username=${username}&&friend=${currentChat.current}`, {
@@ -105,7 +108,7 @@ export default function ChatApp() {
             id: message.id,
             content: message.content,
             senderUsername: message.sender.username,
-            timestamp: message.timestamp
+            timestamp: message.timestamp,
           }));
           setMessagesMap((prevMessages) => {
             prevMessages.set(currentChat.current, messages);
@@ -116,10 +119,13 @@ export default function ChatApp() {
     }
   }, [currentChat.current, username]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [visibleMessages]);
+
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && currentChat.current) {
-      // Emit the message to the server to store it in the database and then emit it to the receiver
       socket.current?.emit("chat message", { message: inputValue, username, friendUsername: currentChat.current });
       setInputValue("");
     }
@@ -171,7 +177,6 @@ export default function ChatApp() {
           if (currentChat.current === friendUsername) {
             currentChat.current = "";
             setVisibleMessages([]);
-           
           }
         } else {
           console.error(data.error || "Failed to delete friend");
@@ -180,10 +185,8 @@ export default function ChatApp() {
   };
 
   const handleDeleteMessage = (messageId: number) => {
-    // Emit the delete event to the server
     socket.current?.emit("delete-message", { messageId, username });
 
-    // Update the UI immediately
     setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
     setMessagesMap((prevMessages) => {
       const friendMessages = prevMessages.get(currentChat.current) || [];
@@ -192,7 +195,6 @@ export default function ChatApp() {
       return new Map(prevMessages);
     });
 
-    // Send the delete request to the server
     fetch("http://localhost:3000/delete-message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -201,13 +203,12 @@ export default function ChatApp() {
         messageId,
       }),
     })
-    .then((response) => response.json())
-    .then((data) => {
-      console.log(data)
-      if (data.error) {
-        console.error(data.error || "Failed to delete message");
-      }
-    });
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          console.error(data.error || "Failed to delete message");
+        }
+      });
   };
 
   if (authenticated === "loading") return <div>Loading...</div>;
@@ -224,87 +225,111 @@ export default function ChatApp() {
   return (
     <div className="flex flex-col h-screen bg-gray-700">
       <ToastContainer />
-      <header className="bg-blue-500 text-white p-4 text-center">
-        <h1 className="text-2xl">Chat App</h1>
-      </header>
-      <Contactlist
-        contacts={contacts}
-        setcontact={(friendUsername: string) => {
-          currentChat.current = friendUsername;
-          const messages = messagesMap.get(friendUsername) || [];
-          setVisibleMessages(messages);
-          console.log("Switched to chat with:", friendUsername);
-        }}
-      />
-      <main className="flex-grow p-4 overflow-y-auto">
-        <div className="flex flex-col space-y-4">
-          {visibleMessages.map((message) => (
-            console.log(message),
-            <div key={message.id} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.senderUsername === username ? "bg-blue-100" : ""}`}>
-              <span>{message.content} {message.timestamp}</span>
-              {message.senderUsername === username && (
+      <div className="flex flex-col h-screen bg-gray-700">
+        <div className="flex flex-grow overflow-hidden">
+          <div className={`flex flex-col bg-gray-800 text-white transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"}`}>
+            <button
+              className="bg-green-500 text-white p-2 m-2 rounded"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? "Collapse" : "Expand"}
+            </button>
+            {isSidebarOpen && (
+              <>
+                <div className="p-2">
+                  <input
+                    type="text"
+                    value={addUserInput}
+                    onChange={(e) => setAddUserInput(e.target.value)}
+                    className="w-full p-2 border rounded"
+                    placeholder="Add a user..."
+                  />
+                  <button onClick={handleAddUser} className="bg-green-500 text-white p-2 mt-2 rounded w-full">
+                    Add User
+                  </button>
+                  {addUserError && <div className="text-red-500">{addUserError}</div>}
+                </div>
+                <div className="flex-grow overflow-y-auto">
+                  {contacts.map((contact) => (
+                    <div
+                      key={contact}
+                      className={`p-2 cursor-pointer hover:bg-gray-700 transition duration-300 ${currentChat.current === contact ? "bg-gray-700" : ""}`}
+                      onClick={() => {
+                        currentChat.current = contact;
+                        const messages = messagesMap.get(contact) || [];
+                        setVisibleMessages(messages);
+                        setIsDeleteMode(false);
+                      }}
+                    >
+                      {contact}
+                    </div>
+                  ))}
+                </div>
                 <button
-                  onClick={() => handleDeleteMessage(message.id)}
-                  className="text-red-500 hover:text-red-700 transition duration-300"
+                  className="bg-red-500 text-white p-2 m-2 rounded"
+                  onClick={() => setIsDeleteMode(!isDeleteMode)}
                 >
-                  Delete
+                  {isDeleteMode ? "Cancel" : "Delete User"}
                 </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </main>
-      <footer className="p-4 bg-gray-200">
-        <div className="mb-4 flex space-x-2">
-          <input
-            type="text"
-            value={addUserInput}
-            onChange={(e) => setAddUserInput(e.target.value)}
-            className="flex-grow p-2 border rounded"
-            placeholder="Add a user..."
-          />
-          <button onClick={handleAddUser} className="bg-green-500 text-white p-2 rounded">
-            Add User
-          </button>
-        </div>
-        {addUserError && <div className="text-red-500">{addUserError}</div>}
-        <form onSubmit={handleSendMessage} className="flex space-x-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="flex-grow p-2 border rounded"
-            placeholder="Type your message..."
-          />
-          <button type="submit" className="bg-blue-500 text-white p-2 rounded">
-            Send
-          </button>
-        </form>
-        <div className="mt-4">
-          <h2 className="text-xl text-white mb-2">Contacts</h2>
-          <ul>
-            {contacts.map((contact) => (
-              <li key={contact} className="flex justify-between items-center mb-2">
-                <span className="text-white">{contact}</span>
-                <button
-                  onClick={() => handleDeleteUser(contact)}
-                  className="text-red-500 hover:text-red-700 transition duration-300"
-                >
-                  Delete User
+                {isDeleteMode && (
+                  <div className="p-2">
+                    {contacts.map((contact) => (
+                      <div
+                        key={contact}
+                        className="p-2 cursor-pointer hover:bg-gray-700 transition duration-300"
+                        onClick={() => handleDeleteUser(contact)}
+                      >
+                        {contact}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex flex-col flex-grow">
+            <header className="bg-blue-500 text-white p-4 flex justify-between items-center">
+              <h1 className="text-2xl">{currentChat.current ? `Chatting with ${currentChat.current}` : "Select a user to chat"}</h1>
+              <a href="/logout" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
+                LOGOUT
+              </a>
+            </header>
+            <main className="flex-grow p-4 overflow-y-auto">
+              <div className="flex flex-col space-y-4">
+                {visibleMessages.map((message) => (
+                  <div key={message.id} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.senderUsername === username ? "bg-blue-100" : ""}`}>
+                    <span>{message.content} {message.timestamp}</span>
+                    {message.senderUsername === username && (
+                      <button
+                        onClick={() => handleDeleteMessage(message.id)}
+                        className="text-red-500 hover:text-red-700 transition duration-300"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            </main>
+            <footer className="p-4 bg-gray-200">
+              <button onClick={() => setEmojiPickerVisible(!emojiPickerVisible)}>😀</button>
+              {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
+              <form onSubmit={handleSendMessage} className="flex space-x-2">
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  className="flex-grow p-2 border rounded"
+                  placeholder="Type your message..."
+                />
+                <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+                  Send
                 </button>
-              </li>
-            ))}
-          </ul>
-          <button >
-          <a
-                  href="/"
-                  className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300"
-                >
-                  LOGOUT
-                </a>
-          </button>
+              </form>
+            </footer>
+          </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
