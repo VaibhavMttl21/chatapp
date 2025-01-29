@@ -72,6 +72,11 @@ export default function ChatApp() {
       setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
     });
 
+    socket.current.on("friend-added", ({ friendUsername }: { friendUsername: string }) => {
+      setContacts((prevContacts) => [...prevContacts, friendUsername]);
+      toast.success(`Friend ${friendUsername} added successfully!`);
+    });
+
     fetch("http://localhost:3000/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,7 +142,10 @@ export default function ChatApp() {
         setAddUserError("Friend already added");
         return;
       }
-
+      if(addUserInput === username) {
+        setAddUserError("You cannot add yourself as a friend");
+        return;
+      }
       fetch("http://localhost:3000/add-friend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,16 +155,16 @@ export default function ChatApp() {
         }),
       })
         .then((response) => response.json())
-        .then((data) => {
-          if (data.message === "Success") {
-            setContacts((prevContacts) => [...prevContacts, addUserInput]);
-            setAddUserInput("");
-            setAddUserError("");
-            toast.success("User added successfully!");
-          } else {
-            setAddUserError(data.error || "Failed to add friend");
-          }
-        });
+        // .then((data) => {
+        //   if (data.message === "Success") {
+        //     setContacts((prevContacts) => [...prevContacts, addUserInput]);
+        //     setAddUserInput("");
+        //     setAddUserError("");
+        //     toast.success("User added successfully!");
+        //   } else {
+        //     setAddUserError(data.error || "Failed to add friend");
+        //   }
+        // });
     }
   };
 

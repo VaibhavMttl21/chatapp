@@ -119,6 +119,18 @@ app.post("/add-friend", async (req, res) => {
       }
     }
   });
+
+  const userSocketId = map.get(username);
+  const friendSocketId = map.get(friendUsername);
+
+  if (userSocketId) {
+    io.to(userSocketId).emit('friend-added', { friendUsername });
+  }
+
+  if (friendSocketId) {
+    io.to(friendSocketId).emit('friend-added', { friendUsername: username });
+  }
+
   res.json({ message: "Success" });
 });
 
