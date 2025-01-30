@@ -18,7 +18,6 @@ const node_path_1 = require("node:path");
 const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
-const node_inspector_1 = require("node:inspector");
 const app = (0, express_1.default)();
 const server = (0, node_http_1.createServer)(app);
 const io = new socket_io_1.Server(server, {
@@ -27,6 +26,16 @@ const io = new socket_io_1.Server(server, {
         methods: ["GET", "POST"],
         credentials: true
     }
+});
+io.use((socket, next) => {
+    var _a;
+    console.log("Query:", socket.handshake.headers.cookie);
+    socket.data.username = (_a = socket.handshake.headers.cookie) === null || _a === void 0 ? void 0 : _a.split("=")[1];
+    if (!socket.data.username) {
+        return next(new Error("Authentication"));
+    }
+    console.log(socket.data.username);
+    next();
 });
 const prisma = new client_1.PrismaClient();
 const map = new Map();
@@ -223,12 +232,12 @@ app.get("/getfriends", (req, res) => __awaiter(void 0, void 0, void 0, function*
 }));
 io.use((socket, next) => {
     var _a;
-    node_inspector_1.console.log("Query:", socket.handshake.headers.cookie);
+    console.log("Query:", socket.handshake.headers.cookie);
     socket.data.username = (_a = socket.handshake.headers.cookie) === null || _a === void 0 ? void 0 : _a.split("=")[1];
     if (!socket.data.username) {
         return next(new Error("Authentication"));
     }
-    node_inspector_1.console.log(socket.data.username);
+    console.log(socket.data.username);
     next();
 });
 // Delete Friend
@@ -269,7 +278,7 @@ app.post("/delete-friend", (req, res) => __awaiter(void 0, void 0, void 0, funct
 //delete
 app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, messageId } = req.body;
-    node_inspector_1.console.log("Delete request received:", { username, messageId }); // Debugging log
+    console.log("Delete request received:", { username, messageId }); // Debugging log
     if (!messageId) {
         res.status(400).json({ error: "Message ID is required" });
         return;
@@ -283,12 +292,12 @@ app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, func
             where: { id: messageId },
             include: { sender: true, receiver: true }
         });
-        node_inspector_1.console.log('MESSAGEGHFHGFGGFHGHFFG', message);
+        console.log('MESSAGEGHFHGFGGFHGHFFG', message);
         if (!message) {
             res.status(404).json({ error: "Message not foundddddd" });
             return;
         }
-        node_inspector_1.console.log("reached");
+        console.log("reached");
         if (message.sender.username !== username && message.receiver.username !== username) {
             res.status(403).json({ error: "You can only delete your own messages" });
             return;
@@ -307,12 +316,12 @@ app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, func
         res.json({ message: "Message deleted successfully" });
     }
     catch (error) {
-        node_inspector_1.console.log(error);
+        console.log(error);
         if (error.code === 'P2025') {
             res.status(404).json({ error: "Message not found" });
         }
         else {
-            node_inspector_1.console.error("Error in delete-message route:", error);
+            console.error("Error in delete-message route:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     }
@@ -368,21 +377,21 @@ io.on("connection", (socket) => {
             }
         }
         catch (error) {
-            node_inspector_1.console.error("Error handling chat message:", error);
+            console.error("Error handling chat message:", error);
             socket.emit("chat message", { error: "Failed to send message" });
         }
     }));
     socket.on('setusername', (username) => {
         map.set(username, socket.id);
         socket.data.username = username;
-        node_inspector_1.console.log(map);
+        console.log(map);
     });
     socket.on('disconnect', () => {
         map.delete(socket.data.username);
     });
     socket.on('delete-message', (data) => __awaiter(void 0, void 0, void 0, function* () {
         const { message, username, friendUsername, messageId } = data;
-        node_inspector_1.console.log("Delete request received:", { messageId, username }); // Debugging log
+        console.log("Delete request received:", { messageId, username }); // Debugging log
         if (!messageId) {
             socket.emit('delete-message', { error: "Message ID is required" });
             return;
@@ -393,12 +402,12 @@ io.on("connection", (socket) => {
         }
         const senderSocketId = map.get(username);
         const receiverSocketId = map.get(friendUsername);
-        node_inspector_1.console.log("Delete request received:", { messageId, username });
+        console.log("Delete request received:", { messageId, username });
         // console.log(senderSocketId) // Debugging log
         // console .log(receiverSocketId) // Debugging log
         io.to([senderSocketId || "", receiverSocketId || ""]).emit("delete-message", { messageId });
     }));
 });
 server.listen(3000, () => {
-    node_inspector_1.console.log("Server running at http://localhost:3000");
+    console.log("Server running at http://localhost:3000");
 });

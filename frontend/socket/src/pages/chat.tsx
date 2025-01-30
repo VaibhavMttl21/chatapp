@@ -140,10 +140,12 @@ export default function ChatApp() {
     if (addUserInput.trim()) {
       if (contacts.includes(addUserInput)) {
         setAddUserError("Friend already added");
+        setTimeout(() => setAddUserError(""), 5000);
         return;
       }
-      if(addUserInput === username) {
+      if (addUserInput === username) {
         setAddUserError("You cannot add yourself as a friend");
+        setTimeout(() => setAddUserError(""), 5000);
         return;
       }
       fetch("http://localhost:3000/add-friend", {
@@ -155,16 +157,20 @@ export default function ChatApp() {
         }),
       })
         .then((response) => response.json())
-        // .then((data) => {
-        //   if (data.message === "Success") {
-        //     setContacts((prevContacts) => [...prevContacts, addUserInput]);
-        //     setAddUserInput("");
-        //     setAddUserError("");
-        //     toast.success("User added successfully!");
-        //   } else {
-        //     setAddUserError(data.error || "Failed to add friend");
-        //   }
-        // });
+        .then((data) => {
+          if (data.error) {
+            setAddUserError(data.error);
+            setTimeout(() => setAddUserError(""), 5000);
+          } else {
+            setAddUserInput("");
+            setAddUserError("");
+            toast.success("User added successfully!");
+          }
+        })
+        .catch(() => {
+          setAddUserError("Username does not exist");
+          setTimeout(() => setAddUserError(""), 5000);
+        });
     }
   };
 
@@ -240,7 +246,9 @@ export default function ChatApp() {
               className="bg-green-500 text-white p-2 m-2 rounded"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             >
-              {isSidebarOpen ? "Collapse" : "Expand"}
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 7.5h16.5m-16.5 7.5h16.5" />
+              </svg>
             </button>
             {isSidebarOpen && (
               <>
@@ -249,7 +257,7 @@ export default function ChatApp() {
                     type="text"
                     value={addUserInput}
                     onChange={(e) => setAddUserInput(e.target.value)}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded text-black"
                     placeholder="Add a user..."
                   />
                   <button onClick={handleAddUser} className="bg-green-500 text-white p-2 mt-2 rounded w-full">
@@ -259,9 +267,9 @@ export default function ChatApp() {
                 </div>
                 <div className="flex-grow overflow-y-auto">
                   {contacts.map((contact) => (
-                    <div
+                    <button
                       key={contact}
-                      className={`p-2 cursor-pointer hover:bg-gray-700 transition duration-300 ${currentChat.current === contact ? "bg-gray-700" : ""}`}
+                      className={`p-2 w-full text-left cursor-pointer hover:bg-gray-700 transition duration-300 ${currentChat.current === contact ? "" : ""}`}
                       onClick={() => {
                         currentChat.current = contact;
                         const messages = messagesMap.get(contact) || [];
@@ -270,7 +278,7 @@ export default function ChatApp() {
                       }}
                     >
                       {contact}
-                    </div>
+                    </button>
                   ))}
                 </div>
                 <button
@@ -282,13 +290,13 @@ export default function ChatApp() {
                 {isDeleteMode && (
                   <div className="p-2">
                     {contacts.map((contact) => (
-                      <div
+                      <button
                         key={contact}
-                        className="p-2 cursor-pointer hover:bg-gray-700 transition duration-300"
+                        className="p-2 w-full text-left cursor-pointer hover:bg-gray-700 transition duration-300"
                         onClick={() => handleDeleteUser(contact)}
                       >
                         {contact}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -305,8 +313,9 @@ export default function ChatApp() {
             <main className="flex-grow p-4 overflow-y-auto">
               <div className="flex flex-col space-y-4">
                 {visibleMessages.map((message) => (
-                  <div key={message.id} className={`bg-white p-2 rounded shadow flex justify-between items-center ${message.senderUsername === username ? "bg-blue-100" : ""}`}>
-                    <span>{message.content} {message.timestamp}</span>
+                  <div key={message.id} className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-blue-100 self-end" : "bg-gray-100 self-start"}`}>
+                    <span>{message.content}</span>
+                    <span className="text-gray-500 text-xs block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
                     {message.senderUsername === username && (
                       <button
                         onClick={() => handleDeleteMessage(message.id)}

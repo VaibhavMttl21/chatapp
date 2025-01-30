@@ -72,8 +72,8 @@ export default function Auth() {
           }
         })
         .catch((error) => {
-          console.error("Signup error:", error);
-          setError(error.message);
+          console.error("Username exists", error);
+          setError("Username exists");
         });
     }
   };

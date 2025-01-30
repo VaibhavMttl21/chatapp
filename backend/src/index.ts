@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { PrismaClient } from "@prisma/client";
-import { console } from "node:inspector";
 const app = express();
 const server = createServer(app);
 
@@ -14,6 +13,15 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
     credentials: true
   }
+});
+io.use((socket, next) => {
+  console.log("Query:", socket.handshake.headers.cookie);
+  socket.data.username = socket.handshake.headers.cookie?.split("=")[1];
+  if (!socket.data.username) {
+    return next(new Error("Authentication"));
+  }
+  console.log(socket.data.username);
+  next();
 });
 const prisma = new PrismaClient();
 const map = new Map<string, string>();
@@ -26,7 +34,6 @@ app.use(cors({
 })); // Enable CORS for all routes
 app.use(express.static(buildPath));
 app.use(express.json()); // To parse JSON bodies
-
 // Signup
 app.post("/signup", (req, res) => {
   const { username, password } = req.body;
