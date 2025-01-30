@@ -28,6 +28,9 @@ export default function ChatApp() {
   const username = cookies.username;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
+  const [showDeleteButton, setShowDeleteButton] = useState<number | null>(null);
+  const [iconPositions, setIconPositions] = useState<{ x: number; y: number }[]>([]);
+  const [initialScroll, setInitialScroll] = useState<boolean>(true);
 
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });
@@ -120,13 +123,44 @@ export default function ChatApp() {
             return new Map(prevMessages);
           });
           setVisibleMessages(messages);
+          setInitialScroll(true); // Set initial scroll to true when messages are loaded
         });
     }
   }, [currentChat.current, username]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages]);
+    if (initialScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setInitialScroll(false); // Reset initial scroll after scrolling
+    }
+  }, [visibleMessages, initialScroll]);
+
+  useEffect(() => {
+    const generatePositions = () => {
+      const positions = [];
+      const iconSize = 24; // Icon size in pixels
+      const margin = 10; // Margin around icons
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const cols = Math.floor(width / (iconSize + margin));
+      const rows = Math.floor(height / (iconSize + margin));
+
+      const totalCells = cols * rows;
+
+      // Generate random positions within grid cells
+      for (let i = 0; i < Math.min(2000, totalCells); i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = col * (iconSize + margin) + Math.random() * margin;
+        const y = row * (iconSize + margin) + Math.random() * margin;
+        positions.push({ x, y });
+      }
+      return positions;
+    };
+
+    setIconPositions(generatePositions());
+  }, []);
 
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
@@ -225,6 +259,13 @@ export default function ChatApp() {
       });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, action: () => void) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      action();
+    }
+  };
+
   if (authenticated === "loading") return <div>Loading...</div>;
 
   if (authenticated === "false") {
@@ -237,17 +278,18 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-700">
+    <div className="relative flex flex-col h-screen bg-gradient-to-r bg-orange-50">
       <ToastContainer />
-      <div className="flex flex-col h-screen bg-gray-700">
+      <div className="flex flex-col h-screen bg-gradient-to-r bg-orange-50 z-10">
         <div className="flex flex-grow overflow-hidden">
-          <div className={`flex flex-col bg-gray-800 text-white transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"}`}>
+          <div className={`flex flex-col bg-orange-100 text-gray-900 transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"}`}>
             <button
-              className="bg-green-500 text-white p-2 m-2 rounded"
+              className="bg-orange-200 text-gray-900 p-2 m-2 rounded"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onKeyDown={(e) => handleKeyDown(e, () => setIsSidebarOpen(!isSidebarOpen))}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 7.5h16.5m-16.5 7.5h16.5" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 7.5h16.5m-16.5 7.5h16.5" />
               </svg>
             </button>
             {isSidebarOpen && (
@@ -257,10 +299,10 @@ export default function ChatApp() {
                     type="text"
                     value={addUserInput}
                     onChange={(e) => setAddUserInput(e.target.value)}
-                    className="w-full p-2 border rounded text-black"
+                    className="w-full p-2 border rounded text-gray-900"
                     placeholder="Add a user..."
                   />
-                  <button onClick={handleAddUser} className="bg-green-500 text-white p-2 mt-2 rounded w-full">
+                  <button onClick={handleAddUser} className="bg-orange-200 text-gray-900 p-2 mt-2 rounded w-full" onKeyDown={(e) => handleKeyDown(e, handleAddUser)}>
                     Add User
                   </button>
                   {addUserError && <div className="text-red-500">{addUserError}</div>}
@@ -269,13 +311,19 @@ export default function ChatApp() {
                   {contacts.map((contact) => (
                     <button
                       key={contact}
-                      className={`p-2 w-full text-left cursor-pointer hover:bg-gray-700 transition duration-300 ${currentChat.current === contact ? "" : ""}`}
+                      className={`p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 ${currentChat.current === contact ? "bg-orange-200" : ""}`}
                       onClick={() => {
                         currentChat.current = contact;
                         const messages = messagesMap.get(contact) || [];
                         setVisibleMessages(messages);
                         setIsDeleteMode(false);
                       }}
+                      onKeyDown={(e) => handleKeyDown(e, () => {
+                        currentChat.current = contact;
+                        const messages = messagesMap.get(contact) || [];
+                        setVisibleMessages(messages);
+                        setIsDeleteMode(false);
+                      })}
                     >
                       {contact}
                     </button>
@@ -284,6 +332,7 @@ export default function ChatApp() {
                 <button
                   className="bg-red-500 text-white p-2 m-2 rounded"
                   onClick={() => setIsDeleteMode(!isDeleteMode)}
+                  onKeyDown={(e) => handleKeyDown(e, () => setIsDeleteMode(!isDeleteMode))}
                 >
                   {isDeleteMode ? "Cancel" : "Delete User"}
                 </button>
@@ -292,8 +341,9 @@ export default function ChatApp() {
                     {contacts.map((contact) => (
                       <button
                         key={contact}
-                        className="p-2 w-full text-left cursor-pointer hover:bg-gray-700 transition duration-300"
+                        className="p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300"
                         onClick={() => handleDeleteUser(contact)}
+                        onKeyDown={(e) => handleKeyDown(e, () => handleDeleteUser(contact))}
                       >
                         {contact}
                       </button>
@@ -303,20 +353,55 @@ export default function ChatApp() {
               </>
             )}
           </div>
-          <div className="flex flex-col flex-grow">
-            <header className="bg-blue-500 text-white p-4 flex justify-between items-center">
+          <div className="flex flex-col flex-grow relative">
+            <header className="bg-orange-200 text-gray-900 p-4 flex justify-between items-center">
               <h1 className="text-2xl">{currentChat.current ? `Chatting with ${currentChat.current}` : "Select a user to chat"}</h1>
               <a href="/logout" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
                 LOGOUT
               </a>
             </header>
-            <main className="flex-grow p-4 overflow-y-auto">
-              <div className="flex flex-col space-y-4">
+            <main className="flex-grow p-4 overflow-y-auto relative">
+              <div className="absolute inset-0 z-0">
+                {iconPositions.map((pos, i) => (
+                  <div
+                    key={i}
+                    className="absolute text-gray-700 opacity-10 animate-float"
+                    style={{
+                      top: `${pos.y}px`,
+                      left: `${pos.x}px`,
+                      transform: `scale(${Math.random() * 0.7 + 0.8}) rotate(${Math.random() * 360}deg)`,
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.5"
+                      stroke="currentColor"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
+                      />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col space-y-4 relative z-10">
                 {visibleMessages.map((message) => (
-                  <div key={message.id} className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-blue-100 self-end" : "bg-gray-100 self-start"}`}>
+                  <div
+                    key={message.id}
+                    className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setShowDeleteButton(message.id);
+                    }}
+                  >
                     <span>{message.content}</span>
                     <span className="text-gray-500 text-xs block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
-                    {message.senderUsername === username && (
+                    {showDeleteButton === message.id && message.senderUsername === username && (
                       <button
                         onClick={() => handleDeleteMessage(message.id)}
                         className="text-red-500 hover:text-red-700 transition duration-300"
@@ -329,7 +414,7 @@ export default function ChatApp() {
                 <div ref={messagesEndRef} />
               </div>
             </main>
-            <footer className="p-4 bg-gray-200">
+            <footer className="p-4 bg-orange-100">
               <button onClick={() => setEmojiPickerVisible(!emojiPickerVisible)}>😀</button>
               {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
               <form onSubmit={handleSendMessage} className="flex space-x-2">
@@ -339,7 +424,7 @@ export default function ChatApp() {
                   className="flex-grow p-2 border rounded"
                   placeholder="Type your message..."
                 />
-                <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+                <button type="submit" className="bg-orange-200 text-gray-900 p-2 rounded">
                   Send
                 </button>
               </form>
