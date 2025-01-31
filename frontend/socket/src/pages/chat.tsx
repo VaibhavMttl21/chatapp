@@ -29,13 +29,37 @@ export default function ChatApp() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
   const [showDeleteButton, setShowDeleteButton] = useState<number | null>(null);
-  const [iconPositions, setIconPositions] = useState<{ x: number; y: number }[]>([]);
   const [initialScroll, setInitialScroll] = useState<boolean>(true);
+
+  const generatePositions = (sidebarWidth: number, footerHeight:number) => {
+    const positions = [];
+    const iconSize = 24; // Icon size in pixels
+    const margin = 10; // Margin around icons
+
+    const width = window.innerWidth - sidebarWidth;
+    const height = window.innerHeight  ;
+    const cols = Math.floor(width / (iconSize + margin));
+    const rows = Math.floor(height / (iconSize + margin));
+
+    const totalCells = cols * rows;
+
+    // Generate random positions within grid cells
+    for (let i = 0; i < Math.min(2000, totalCells); i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = col * (iconSize + margin) + Math.random() * margin;
+      const y = row * (iconSize + margin) + Math.random() * margin;
+      positions.push({ x, y });
+    }
+    return positions;
+  };
+
+  const [iconPositions, setIconPositions] = useState(() => generatePositions(isSidebarOpen ? 256 : 64));
 
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });
     socket.current = socketIo;
-
+  
     socket.current.on("connect", () => {
       if (!socket.current) {
         console.log("Socket not connected");
@@ -44,7 +68,7 @@ export default function ChatApp() {
         console.log("Sent username to server:", username);
       }
     });
-
+  
     socket.current.on("chat message", (message: any) => {
       const newMessage = {
         id: message.message.id,
@@ -52,34 +76,28 @@ export default function ChatApp() {
         content: message.message.content,
         timestamp: message.message.timestamp,
       } as Message;
-      setMessagesMap((prevMessages) => {
-        const friendMessages = prevMessages.get(message.senderUsername) || [];
-        prevMessages.set(message.senderUsername, [...friendMessages, newMessage]);
-        return new Map(prevMessages);
-      });
       if (message.senderUsername === currentChat.current || username === message.senderUsername) {
         setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
       }
     });
-
+  
     socket.current.on("delete-message", ({ messageId }: { messageId: number }) => {
-      setMessagesMap((prevMessages) => {
-        const updatedMessagesMap = new Map(prevMessages);
-        updatedMessagesMap.forEach((messages, username) => {
-          const updatedMessages = messages.filter((message) => message.id !== messageId);
-          updatedMessagesMap.set(username, updatedMessages);
-        });
-        return updatedMessagesMap;
-      });
-
       setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
     });
-
+  
+    socket.current.on("edit-message", ({ messageId, newContent }: { messageId: number, newContent: string }) => {
+      setVisibleMessages((prevMessages) =>
+        prevMessages.map((message) =>
+          message.id === messageId ? { ...message, content: newContent } : message
+        )
+      );
+    });
+  
     socket.current.on("friend-added", ({ friendUsername }: { friendUsername: string }) => {
       setContacts((prevContacts) => [...prevContacts, friendUsername]);
       toast.success(`Friend ${friendUsername} added successfully!`);
     });
-
+  
     fetch("http://localhost:3000/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,7 +107,7 @@ export default function ChatApp() {
       .then((data) => {
         setAuthenticated(data.message === "Success" ? "true" : "false");
       });
-
+  
     fetch(`http://localhost:3000/getfriends?username=${username}`, {
       method: "GET",
       credentials: "include",
@@ -97,7 +115,7 @@ export default function ChatApp() {
     })
       .then((response) => response.json())
       .then((data) => setContacts(data));
-
+  
     return () => {
       socket.current?.disconnect();
     };
@@ -118,10 +136,6 @@ export default function ChatApp() {
             senderUsername: message.sender.username,
             timestamp: message.timestamp,
           }));
-          setMessagesMap((prevMessages) => {
-            prevMessages.set(currentChat.current, messages);
-            return new Map(prevMessages);
-          });
           setVisibleMessages(messages);
           setInitialScroll(true); // Set initial scroll to true when messages are loaded
         });
@@ -135,37 +149,15 @@ export default function ChatApp() {
     }
   }, [visibleMessages, initialScroll]);
 
-  useEffect(() => {
-    const generatePositions = () => {
-      const positions = [];
-      const iconSize = 24; // Icon size in pixels
-      const margin = 10; // Margin around icons
-
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const cols = Math.floor(width / (iconSize + margin));
-      const rows = Math.floor(height / (iconSize + margin));
-
-      const totalCells = cols * rows;
-
-      // Generate random positions within grid cells
-      for (let i = 0; i < Math.min(2000, totalCells); i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const x = col * (iconSize + margin) + Math.random() * margin;
-        const y = row * (iconSize + margin) + Math.random() * margin;
-        positions.push({ x, y });
-      }
-      return positions;
-    };
-
-    setIconPositions(generatePositions());
-  }, []);
-
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && currentChat.current) {
       socket.current?.emit("chat message", { message: inputValue, username, friendUsername: currentChat.current });
+      setInputValue("");
+    }
+    else
+    {
+      toast.error("Please select a user to chat with!");
       setInputValue("");
     }
   };
@@ -174,12 +166,14 @@ export default function ChatApp() {
     if (addUserInput.trim()) {
       if (contacts.includes(addUserInput)) {
         setAddUserError("Friend already added");
-        setTimeout(() => setAddUserError(""), 5000);
+         setAddUserError(" ")
+        setTimeout(()=>{} ,2000);
         return;
       }
       if (addUserInput === username) {
         setAddUserError("You cannot add yourself as a friend");
-        setTimeout(() => setAddUserError(""), 5000);
+        setAddUserError(" ")
+        setTimeout(()=>{} ,2000);
         return;
       }
       fetch("http://localhost:3000/add-friend", {
@@ -191,19 +185,20 @@ export default function ChatApp() {
         }),
       })
         .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            setAddUserError(data.error);
-            setTimeout(() => setAddUserError(""), 5000);
-          } else {
-            setAddUserInput("");
-            setAddUserError("");
-            toast.success("User added successfully!");
-          }
-        })
+        // .then((data) => {
+        //   if (data.error) {
+        //     setAddUserError(data.error);
+        //     setTimeout(() => setAddUserError(""), 2000);
+        //     setAddUserInput("");
+        //   } else {
+        //     setAddUserInput("");
+        //     setAddUserError("");
+        //     toast.success("User added successfully!");
+        //   }
+        // })
         .catch(() => {
           setAddUserError("Username does not exist");
-          setTimeout(() => setAddUserError(""), 5000);
+          setTimeout(() => setAddUserError(""), 2000);
         });
     }
   };
@@ -236,12 +231,6 @@ export default function ChatApp() {
     socket.current?.emit("delete-message", { messageId, username });
 
     setVisibleMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
-    setMessagesMap((prevMessages) => {
-      const friendMessages = prevMessages.get(currentChat.current) || [];
-      const updatedMessages = friendMessages.filter((message) => message.id !== messageId);
-      prevMessages.set(currentChat.current, updatedMessages);
-      return new Map(prevMessages);
-    });
 
     fetch("http://localhost:3000/delete-message", {
       method: "POST",
@@ -266,6 +255,26 @@ export default function ChatApp() {
     }
   };
 
+  const handleEditMessage = (messageId: number, newContent: string) => {
+    socket.current?.emit("edit-message", { messageId, username, newContent, friendUsername: currentChat.current });
+  
+    fetch("http://localhost:3000/edit-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        messageId,
+        newContent,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.error) {
+          console.error(data.error || "Failed to edit message");
+        }
+      });
+  };
+
   if (authenticated === "loading") return <div>Loading...</div>;
 
   if (authenticated === "false") {
@@ -285,8 +294,14 @@ export default function ChatApp() {
           <div className={`flex flex-col bg-orange-100 text-gray-900 transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"}`}>
             <button
               className="bg-orange-200 text-gray-900 p-2 m-2 rounded"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              onKeyDown={(e) => handleKeyDown(e, () => setIsSidebarOpen(!isSidebarOpen))}
+              onClick={() => {
+                setIsSidebarOpen(!isSidebarOpen);
+                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64));
+              }}
+              onKeyDown={(e) => handleKeyDown(e, () => {
+                setIsSidebarOpen(!isSidebarOpen);
+                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64));
+              })}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 7.5h16.5m-16.5 7.5h16.5" />
@@ -390,29 +405,43 @@ export default function ChatApp() {
                 ))}
               </div>
               <div className="flex flex-col space-y-4 relative z-10">
-                {visibleMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setShowDeleteButton(message.id);
-                    }}
-                  >
-                    <span>{message.content}</span>
-                    <span className="text-gray-500 text-xs block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
-                    {showDeleteButton === message.id && message.senderUsername === username && (
-                      <button
-                        onClick={() => handleDeleteMessage(message.id)}
-                        className="text-red-500 hover:text-red-700 transition duration-300"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+  {visibleMessages.map((message) => (
+    <div
+      key={message.id}
+      className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setShowDeleteButton(message.id);
+      }}
+    >
+      <span>{message.content}</span>
+      {message.edited && <span className="text-gray-500 text-xs italic"> (edited)</span>}
+      <span className="text-gray-500 text-xs block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
+      {showDeleteButton === message.id && message.senderUsername === username && (
+        <>
+          <button
+            onClick={() => {
+              const newContent = prompt("Edit your message:", message.content);
+              if (newContent !== null) {
+                handleEditMessage(message.id, newContent);
+              }
+            }}
+            className="text-blue-500 hover:text-blue-700 transition duration-300"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => handleDeleteMessage(message.id)}
+            className="text-red-500 hover:text-red-700 transition duration-300"
+          >
+            Delete
+          </button>
+        </>
+      )}
+    </div>
+  ))}
+  <div ref={messagesEndRef} />
+</div>
             </main>
             <footer className="p-4 bg-orange-100">
               <button onClick={() => setEmojiPickerVisible(!emojiPickerVisible)}>😀</button>

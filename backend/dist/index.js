@@ -326,6 +326,51 @@ app.post("/delete-message", (req, res) => __awaiter(void 0, void 0, void 0, func
         }
     }
 }));
+app.post("/edit-message", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, messageId, newContent } = req.body;
+    console.log(messageId);
+    console.log(newContent);
+    if (!messageId || !newContent) {
+        res.status(400).json({ error: "Message ID and new content are required" });
+        return;
+    }
+    try {
+        const message = yield prisma.message.findUnique({
+            where: { id: messageId },
+            include: { sender: true, receiver: true }
+        });
+        if (!message) {
+            res.status(404).json({ error: "Message not found" });
+            return;
+        }
+        if (message.sender.username !== username && message.receiver.username !== username) {
+            res.status(403).json({ error: "You can only edit your own messages" });
+            return;
+        }
+        yield prisma.message.update({
+            where: { id: messageId },
+            data: { content: newContent }
+        });
+        const senderSocketId = map.get(message.sender.username);
+        const receiverSocketId = map.get(message.receiver.username);
+        if (senderSocketId) {
+            io.to(senderSocketId).emit('edit-message', { messageId, newContent });
+        }
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('edit-message', { messageId, newContent });
+        }
+        res.json({ message: "Message edited successfully" });
+    }
+    catch (error) {
+        if (error.code === 'P2025') {
+            res.status(404).json({ error: "Message not found" });
+        }
+        else {
+            console.error("Error in edit-message route:", error);
+            res.status(500).json({ error: "Internal server error" });
+        }
+    }
+}));
 io.on("connection", (socket) => {
     socket.on("chat message", (data) => __awaiter(void 0, void 0, void 0, function* () {
         const { message, username, friendUsername } = data;
@@ -406,6 +451,24 @@ io.on("connection", (socket) => {
         // console.log(senderSocketId) // Debugging log
         // console .log(receiverSocketId) // Debugging log
         io.to([senderSocketId || "", receiverSocketId || ""]).emit("delete-message", { messageId });
+    }));
+    socket.on('edit-message', (data) => __awaiter(void 0, void 0, void 0, function* () {
+        const { username, friendUsername, messageId, newContent } = data;
+        console.log("edit request received:", { messageId, username, friendUsername, newContent }); // Debugging log
+        if (!messageId) {
+            socket.emit('edit-message', { error: "Message ID is required" });
+            return;
+        }
+        if (!username) {
+            socket.emit('edit-message', { error: "Username is required" });
+            return;
+        }
+        const senderSocketId = map.get(username);
+        const receiverSocketId = map.get(friendUsername);
+        console.log("edit request received:", { messageId, username });
+        // console.log(senderSocketId) // Debugging log
+        // console .log(receiverSocketId) // Debugging log
+        io.to([senderSocketId || "", receiverSocketId || ""]).emit("edit-message", { messageId, newContent });
     }));
 });
 server.listen(3000, () => {
