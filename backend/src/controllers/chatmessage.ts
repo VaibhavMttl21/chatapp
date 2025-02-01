@@ -53,7 +53,6 @@ const { message, username, friendUsername } = data;
       }
 
     } catch (error) {
-      console.error("Error handling chat message:", error);
       socket.emit("chat message", { error: "Failed to send message" });
     }
 }
