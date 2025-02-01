@@ -1,10 +1,8 @@
-
 import { join } from "node:path";
 import express from "express";
 import cors from 'cors';
-import { app, io, server } from "./io";
-import { prisma } from "./prisma";
-import { map } from "./map";
+import { app, io, server } from "./serverconfig/io";
+import { map } from "./serverconfig/map";
 import { addFriend } from "./Routes/addfriend";
 import { verify } from "./Routes/verify";
 import { signin } from "./Routes/signin";

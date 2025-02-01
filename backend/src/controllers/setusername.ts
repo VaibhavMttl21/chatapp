@@ -1,4 +1,4 @@
-import { map } from "../map";
+import { map } from "../serverconfig/map";
 
 export const setusername = async(socket:any,username: string) => {
     map.set(username, socket.id);

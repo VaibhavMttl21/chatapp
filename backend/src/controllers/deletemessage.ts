@@ -1,6 +1,6 @@
 
-import { io } from "../io";
-import { map } from "../map";
+import { io } from "../serverconfig/io";
+import { map } from "../serverconfig/map";
 
 export const deletemessage = async (socket: any, data: any) => {
     const { message, username, friendUsername, messageId } = data;

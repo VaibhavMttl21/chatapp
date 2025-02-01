@@ -1,4 +1,4 @@
-import { prisma } from "../prisma";
+import { prisma } from "../serverconfig/prisma";
 
 export const signin = async(req:any,res:any)=>
 {

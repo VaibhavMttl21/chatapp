@@ -1,4 +1,4 @@
-import { prisma } from "../prisma";
+import { prisma } from "../serverconfig/prisma";
 
 export const Messages = async (req: any, res: any) => {
      const { username, friendUsername, message } = req.body;

@@ -1,7 +1,7 @@
 
-import { io } from "../io";
-import { map } from "../map";
-import { prisma } from "../prisma";
+import { io } from "../serverconfig/io";
+import { map } from "../serverconfig/map";
+import { prisma } from "../serverconfig/prisma";
 
 export const deleteMessage = async (req: any, res: any) => {
      const { username, messageId } = req.body;

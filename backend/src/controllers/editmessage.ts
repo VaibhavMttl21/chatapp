@@ -1,5 +1,5 @@
-import { io } from "../io";
-import { map } from "../map";
+import { io } from "../serverconfig/io";
+import { map } from "../serverconfig/map";
 
 export const editmessage = async(socket:any, data: any) =>
 {

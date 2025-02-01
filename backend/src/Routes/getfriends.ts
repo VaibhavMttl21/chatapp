@@ -1,4 +1,4 @@
-import { prisma } from "../prisma";
+import { prisma } from "../serverconfig/prisma";
 
 export const getFriends = async (req: any, res: any) => {
      const username = req.query.username as string;
