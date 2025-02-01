@@ -10,6 +10,7 @@ interface Message {
   content: string;
   senderUsername: string;
   timestamp: string;
+  edited: Boolean;
 }
 
 export default function ChatApp() {
@@ -30,6 +31,7 @@ export default function ChatApp() {
   const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
   const [showDeleteButton, setShowDeleteButton] = useState<number | null>(null);
   const [initialScroll, setInitialScroll] = useState<boolean>(true);
+  const [dropdownVisible, setDropdownVisible] = useState<number | null>(null);
 
   const generatePositions = (sidebarWidth: number, footerHeight:number) => {
     const positions = [];
@@ -37,7 +39,7 @@ export default function ChatApp() {
     const margin = 10; // Margin around icons
 
     const width = window.innerWidth - sidebarWidth;
-    const height = window.innerHeight  ;
+    const height = window.innerHeight - footerHeight ;
     const cols = Math.floor(width / (iconSize + margin));
     const rows = Math.floor(height / (iconSize + margin));
 
@@ -54,7 +56,7 @@ export default function ChatApp() {
     return positions;
   };
 
-  const [iconPositions, setIconPositions] = useState(() => generatePositions(isSidebarOpen ? 256 : 64));
+  const [iconPositions, setIconPositions] = useState(() => generatePositions(isSidebarOpen ? 256 : 64,64));
 
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });
@@ -88,7 +90,7 @@ export default function ChatApp() {
     socket.current.on("edit-message", ({ messageId, newContent }: { messageId: number, newContent: string }) => {
       setVisibleMessages((prevMessages) =>
         prevMessages.map((message) =>
-          message.id === messageId ? { ...message, content: newContent } : message
+          message.id === messageId ? { ...message, content: newContent, edited:true } : message
         )
       );
     });
@@ -135,7 +137,9 @@ export default function ChatApp() {
             content: message.content,
             senderUsername: message.sender.username,
             timestamp: message.timestamp,
+            edited: message.edited,
           }));
+          console.log(data)
           setVisibleMessages(messages);
           setInitialScroll(true); // Set initial scroll to true when messages are loaded
         });
@@ -296,11 +300,11 @@ export default function ChatApp() {
               className="bg-orange-200 text-gray-900 p-2 m-2 rounded"
               onClick={() => {
                 setIsSidebarOpen(!isSidebarOpen);
-                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64));
+                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64,64));
               }}
               onKeyDown={(e) => handleKeyDown(e, () => {
                 setIsSidebarOpen(!isSidebarOpen);
-                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64));
+                setIconPositions(generatePositions(!isSidebarOpen ? 256 : 64,64));
               })}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
@@ -371,7 +375,7 @@ export default function ChatApp() {
           <div className="flex flex-col flex-grow relative">
             <header className="bg-orange-200 text-gray-900 p-4 flex justify-between items-center">
               <h1 className="text-2xl">{currentChat.current ? `Chatting with ${currentChat.current}` : "Select a user to chat"}</h1>
-              <a href="/logout" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
+              <a href="/" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
                 LOGOUT
               </a>
             </header>
@@ -408,56 +412,74 @@ export default function ChatApp() {
   {visibleMessages.map((message) => (
     <div
       key={message.id}
-      className={`max-w-max p-2 rounded shadow ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setShowDeleteButton(message.id);
-      }}
+      className={`max-w-max p-2 rounded shadow flex flex-col ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
     >
-      <span>{message.content}</span>
-      {message.edited && <span className="text-gray-500 text-xs italic"> (edited)</span>}
-      <span className="text-gray-500 text-xs block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
-      {showDeleteButton === message.id && message.senderUsername === username && (
-        <>
-          <button
-            onClick={() => {
-              const newContent = prompt("Edit your message:", message.content);
-              if (newContent !== null) {
-                handleEditMessage(message.id, newContent);
-              }
-            }}
-            className="text-blue-500 hover:text-blue-700 transition duration-300"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => handleDeleteMessage(message.id)}
-            className="text-red-500 hover:text-red-700 transition duration-300"
-          >
-            Delete
-          </button>
-        </>
-      )}
+      <div className="flex items-center">
+        <span>{message.content}</span>
+        {message.senderUsername === username && (
+          <div className="relative ml-2">
+            <button
+              onClick={() => setDropdownVisible(dropdownVisible === message.id ? null : message.id)}
+              className="text-gray-900 hover:text-gray-700 transition duration-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6h.01M12 12h.01M12 18h.01" />
+              </svg>
+            </button>
+            {dropdownVisible === message.id && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                <button
+                  onClick={() => {
+                    const newContent = prompt("Edit your message:", message.content);
+                    if (newContent !== null) {
+                      handleEditMessage(message.id, newContent);
+                    }
+                    setDropdownVisible(null);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    handleDeleteMessage(message.id);
+                    setDropdownVisible(null);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="text-gray-500 text-xs italic mt-1">
+        {message.edited && <span>(edited)</span>}
+        <span className="block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
+      </div>
     </div>
   ))}
   <div ref={messagesEndRef} />
 </div>
             </main>
-            <footer className="p-4 bg-orange-100">
-              <button onClick={() => setEmojiPickerVisible(!emojiPickerVisible)}>😀</button>
-              {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
-              <form onSubmit={handleSendMessage} className="flex space-x-2">
-                <textarea
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  className="flex-grow p-2 border rounded"
-                  placeholder="Type your message..."
-                />
-                <button type="submit" className="bg-orange-200 text-gray-900 p-2 rounded">
-                  Send
-                </button>
-              </form>
-            </footer>
+            <footer className="p-4 bg-orange-100 flex items-center">
+  <form onSubmit={handleSendMessage} className="flex-grow flex space-x-2">
+    <textarea
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+      className="flex-grow p-2 border rounded"
+      placeholder="Type your message..."
+    />
+    <button type="button" onClick={() => setEmojiPickerVisible(!emojiPickerVisible)} className="bg-orange-200 text-gray-900 p-2 rounded">
+      😀
+    </button>
+    <button type="submit" className="bg-orange-200 text-gray-900 p-2 rounded">
+      Send
+    </button>
+  </form>
+  {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
+</footer>
           </div>
         </div>
       </div>

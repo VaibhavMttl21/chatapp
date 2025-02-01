@@ -366,7 +366,7 @@ app.post("/edit-message", async (req, res) => {
 
     await prisma.message.update({
       where: { id: messageId },
-      data: { content: newContent }
+      data: { content: newContent , edited: true}
     });
 
     const senderSocketId = map.get(message.sender.username);

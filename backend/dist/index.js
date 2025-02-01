@@ -349,7 +349,7 @@ app.post("/edit-message", (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
         yield prisma.message.update({
             where: { id: messageId },
-            data: { content: newContent }
+            data: { content: newContent, edited: true }
         });
         const senderSocketId = map.get(message.sender.username);
         const receiverSocketId = map.get(message.receiver.username);
