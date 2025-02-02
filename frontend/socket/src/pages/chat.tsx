@@ -308,103 +308,109 @@ export default function ChatApp() {
               </svg>
             </button>
             {isSidebarOpen && (
-              <>
-                <div className="p-2">
-                  <input
-                    type="text"
-                    value={addUserInput}
-                    onChange={(e) => setAddUserInput(e.target.value)}
-                    className="w-full p-2 border rounded text-gray-900"
-                    placeholder="Add a user..."
-                  />
-                  <button onClick={handleAddUser} className="bg-orange-200 text-gray-900 p-2 mt-2 rounded w-full" onKeyDown={(e) => handleKeyDown(e, handleAddUser)}>
-                    Add User
-                  </button>
-                  {addUserError && <div className="text-red-500">{addUserError}</div>}
-                </div>
-                <div className="flex-grow overflow-y-auto">
-                  {contacts.map((contact) => (
-                    <button
-                      key={contact}
-                      className={`p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 ${currentChat.current === contact ? "bg-orange-200" : ""}`}
-                      onClick={() => {
-                        currentChat.current = contact;
-                        const messages = messagesMap.get(contact) || [];
-                        setVisibleMessages(messages);
-                        setIsDeleteMode(false);
-                      }}
-                      onKeyDown={(e) => handleKeyDown(e, () => {
-                        currentChat.current = contact;
-                        const messages = messagesMap.get(contact) || [];
-                        setVisibleMessages(messages);
-                        setIsDeleteMode(false);
-                      })}
-                    >
-                      {contact}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="bg-red-500 text-white p-2 m-2 rounded"
-                  onClick={() => setIsDeleteMode(!isDeleteMode)}
-                  onKeyDown={(e) => handleKeyDown(e, () => setIsDeleteMode(!isDeleteMode))}
-                >
-                  {isDeleteMode ? "Cancel" : "Delete User"}
-                </button>
-                {isDeleteMode && (
-                  <div className="p-2">
-                    {contacts.map((contact) => (
-                      <button
-                        key={contact}
-                        className="p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300"
-                        onClick={() => handleDeleteUser(contact)}
-                        onKeyDown={(e) => handleKeyDown(e, () => handleDeleteUser(contact))}
-                      >
-                        {contact}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+  <>
+    <div className="p-2">
+      <input
+        type="text"
+        value={addUserInput}
+        onChange={(e) => setAddUserInput(e.target.value)}
+        className="w-full p-2 border rounded text-gray-900"
+        placeholder="Add a user..."
+      />
+      <button onClick={handleAddUser} className="bg-orange-200 text-gray-900 p-2 mt-2 rounded w-full" onKeyDown={(e) => handleKeyDown(e, handleAddUser)}>
+        Add User
+      </button>
+      {addUserError && <div className="text-red-500">{addUserError}</div>}
+    </div>
+    <div className="flex-grow overflow-y-auto">
+      {contacts.map((contact) => (
+        <button
+          key={contact}
+          className={`p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 border-b border-gray-300 ${currentChat.current === contact ? "bg-orange-200" : ""}`}
+          onClick={() => {
+            currentChat.current = contact;
+            const messages = messagesMap.get(contact) || [];
+            setVisibleMessages(messages);
+            setIsDeleteMode(false);
+          }}
+          onKeyDown={(e) => handleKeyDown(e, () => {
+            currentChat.current = contact;
+            const messages = messagesMap.get(contact) || [];
+            setVisibleMessages(messages);
+            setIsDeleteMode(false);
+          })}
+        >
+          {contact}
+        </button>
+      ))}
+    </div>
+    <button
+      className="bg-red-500 text-white p-2 m-2 rounded"
+      onClick={() => setIsDeleteMode(!isDeleteMode)}
+      onKeyDown={(e) => handleKeyDown(e, () => setIsDeleteMode(!isDeleteMode))}
+    >
+      {isDeleteMode ? "Cancel" : "Delete User"}
+    </button>
+    {isDeleteMode && (
+      <div className="p-2">
+        {contacts.map((contact) => (
+          <button
+            key={contact}
+            className="p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 border-b border-gray-300"
+            onClick={() => handleDeleteUser(contact)}
+            onKeyDown={(e) => handleKeyDown(e, () => handleDeleteUser(contact))}
+          >
+            {contact}
+          </button>
+        ))}
+      </div>
+    )}
+  </>
+)}
           </div>
           <div className="flex flex-col flex-grow relative">
-            <header className="bg-orange-200 text-gray-900 p-4 flex justify-between items-center">
-              <h1 className="text-2xl">{currentChat.current ? `Chatting with ${currentChat.current}` : "Select a user to chat"}</h1>
-              <a href="/" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
-                LOGOUT
-              </a>
-            </header>
-            <main className="flex-grow p-4 overflow-y-auto relative">
-              <div className="absolute inset-0 z-0">
-                {iconPositions.map((pos, i) => (
-                  <div
-                    key={i}
-                    className="absolute text-gray-700 opacity-10 animate-float"
-                    style={{
-                      top: `${pos.y}px`,
-                      left: `${pos.x}px`,
-                      transform: `scale(${Math.random() * 0.7 + 0.8}) rotate(${Math.random() * 360}deg)`,
-                    }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth="1.5"
-                      stroke="currentColor"
-                      className="h-6 w-6"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
-                      />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col space-y-4 relative z-10">
+  <header className="bg-orange-200 text-gray-900 p-4 flex justify-between items-center">
+    <h1 className="text-2xl">{currentChat.current ? `Chatting with ${currentChat.current}` : "Select a user to chat"}</h1>
+    <a href="/" className="text-sm md:text-base text-gray-900 hover:text-gray-700 transition duration-300">
+      LOGOUT
+    </a>
+  </header>
+  <main className="flex-grow p-4 overflow-y-auto relative">
+    {currentChat.current ? (
+      <div className="absolute inset-0 z-0">
+        {iconPositions.map((pos, i) => (
+          <div
+            key={i}
+            className="absolute text-gray-700 opacity-10 animate-float"
+            style={{
+              top: `${pos.y}px`,
+              left: `${pos.x}px`,
+              transform: `scale(${Math.random() * 0.7 + 0.8}) rotate(${Math.random() * 360}deg)`,
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              className="h-6 w-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
+              />
+            </svg>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="flex items-center justify-center h-full text-gray-700">
+        Select a user to chat
+      </div>
+    )}
+    <div className="flex flex-col space-y-4 relative z-10">
       {visibleMessages.map((message) => (
         <div
           key={message.id}
@@ -420,7 +426,7 @@ export default function ChatApp() {
                   type="text"
                   value={editedContent}
                   onChange={(e) => setEditedContent(e.target.value)}
-                  className="p-2 border rounded"
+                  className="p-2 border rounded bg-orange-100"
                   autoFocus
                 />
                 <button
@@ -439,7 +445,6 @@ export default function ChatApp() {
 
             {message.senderUsername === username && (
               <div className="relative ml-2">
-                {/* Toggle dropdown visibility */}
                 <button
                   onClick={() =>
                     setDropdownVisible(dropdownVisible === message.id ? null : message.id)
@@ -493,26 +498,25 @@ export default function ChatApp() {
       ))}
       <div ref={messagesEndRef} />
     </div>
-
-            </main>
-            <footer className="p-4 bg-orange-100 flex items-center">
-  <form onSubmit={handleSendMessage} className="flex-grow flex space-x-2">
-    <textarea
-      value={inputValue}
-      onChange={(e) => setInputValue(e.target.value)}
-      className="flex-grow p-2 border rounded"
-      placeholder="Type your message..."
-    />
-    <button type="button" onClick={() => setEmojiPickerVisible(!emojiPickerVisible)} className="bg-orange-200 text-gray-900 p-2 rounded">
-      😀
-    </button>
-    <button type="submit" className="bg-orange-200 text-gray-900 p-2 rounded">
-      Send
-    </button>
-  </form>
-  {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
-</footer>
-          </div>
+  </main>
+  <footer className="p-4 bg-orange-100 flex items-center">
+    <form onSubmit={handleSendMessage} className="flex-grow flex space-x-2">
+      <textarea
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        className="flex-grow p-2 border rounded"
+        placeholder="Type your message..."
+      />
+      <button type="button" onClick={() => setEmojiPickerVisible(!emojiPickerVisible)} className="bg-orange-200 text-gray-900 p-2 rounded">
+        😀
+      </button>
+      <button type="submit" className="bg-orange-200 text-gray-900 p-2 rounded">
+        Send
+      </button>
+    </form>
+    {emojiPickerVisible && <EmojiPicker onEmojiClick={(emojiObject) => setInputValue(inputValue + emojiObject.emoji)} />}
+  </footer>
+</div>
         </div>
       </div>
     </div>
