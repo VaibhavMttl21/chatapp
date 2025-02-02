@@ -1,6 +1,6 @@
 import { prisma } from "../serverconfig/prisma";
 
-export const signup = async (res : any, req: any) =>
+export const signup = async (req : any, res: any) =>
 {
      const { username, password } = req.body;
     

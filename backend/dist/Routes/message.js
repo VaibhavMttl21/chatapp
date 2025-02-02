@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Messages = void 0;
-const prisma_1 = require("../prisma");
+const prisma_1 = require("../serverconfig/prisma");
 const Messages = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, friendUsername, message } = req.body;
     const sender = yield prisma_1.prisma.user.findUnique({

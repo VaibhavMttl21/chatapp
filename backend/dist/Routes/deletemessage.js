@@ -10,12 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteMessage = void 0;
-const io_1 = require("../io");
-const map_1 = require("../map");
-const prisma_1 = require("../prisma");
+const io_1 = require("../serverconfig/io");
+const map_1 = require("../serverconfig/map");
+const prisma_1 = require("../serverconfig/prisma");
 const deleteMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, messageId } = req.body;
-    console.log("Delete request received:", { username, messageId }); // Debugging log
     if (!messageId) {
         res.status(400).json({ error: "Message ID is required" });
         return;
@@ -29,12 +28,10 @@ const deleteMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             where: { id: messageId },
             include: { sender: true, receiver: true }
         });
-        console.log('MESSAGEGHFHGFGGFHGHFFG', message);
         if (!message) {
             res.status(404).json({ error: "Message not foundddddd" });
             return;
         }
-        console.log("reached");
         if (message.sender.username !== username && message.receiver.username !== username) {
             res.status(403).json({ error: "You can only delete your own messages" });
             return;
@@ -53,12 +50,10 @@ const deleteMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         res.json({ message: "Message deleted successfully" });
     }
     catch (error) {
-        console.log(error);
         if (error.code === 'P2025') {
             res.status(404).json({ error: "Message not found" });
         }
         else {
-            console.error("Error in delete-message route:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     }

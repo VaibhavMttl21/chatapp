@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMessages = void 0;
-const prisma_1 = require("../prisma");
+const prisma_1 = require("../serverconfig/prisma");
 const getMessages = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const username = req.query.username;
     const friend = req.query.friend;

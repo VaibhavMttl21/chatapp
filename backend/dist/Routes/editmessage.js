@@ -10,13 +10,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.editMessage = void 0;
-const io_1 = require("../io");
-const map_1 = require("../map");
-const prisma_1 = require("../prisma");
+const io_1 = require("../serverconfig/io");
+const map_1 = require("../serverconfig/map");
+const prisma_1 = require("../serverconfig/prisma");
 const editMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, messageId, newContent } = req.body;
-    console.log(messageId);
-    console.log(newContent);
     if (!messageId || !newContent) {
         res.status(400).json({ error: "Message ID and new content are required" });
         return;
@@ -53,7 +51,6 @@ const editMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             res.status(404).json({ error: "Message not found" });
         }
         else {
-            console.error("Error in edit-message route:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     }

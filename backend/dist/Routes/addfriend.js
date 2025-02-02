@@ -10,9 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.addFriend = void 0;
-const io_1 = require("../io");
-const map_1 = require("../map");
-const prisma_1 = require("../prisma");
+const io_1 = require("../serverconfig/io");
+const map_1 = require("../serverconfig/map");
+const prisma_1 = require("../serverconfig/prisma");
 const addFriend = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, friendUsername } = req.body;
     const user = yield prisma_1.prisma.user.findUnique({

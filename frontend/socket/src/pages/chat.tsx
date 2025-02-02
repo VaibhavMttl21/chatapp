@@ -14,7 +14,7 @@ interface Message {
 }
 
 export default function ChatApp() {
-  const [messagesMap, setMessagesMap] = useState<Map<string, Message[]>>(new Map());
+  const [messagesMap] = useState<Map<string, Message[]>>(new Map());
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [addUserInput, setAddUserInput] = useState<string>("");
@@ -29,10 +29,10 @@ export default function ChatApp() {
   const username = cookies.username;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
-  const [showDeleteButton, setShowDeleteButton] = useState<number | null>(null);
   const [initialScroll, setInitialScroll] = useState<boolean>(true);
-  const [dropdownVisible, setDropdownVisible] = useState<number | null>(null);
-
+  const [dropdownVisible, setDropdownVisible] = useState<number | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [editedContent, setEditedContent] = useState("");
   const generatePositions = (sidebarWidth: number, footerHeight:number) => {
     const positions = [];
     const iconSize = 24; // Icon size in pixels
@@ -153,6 +153,13 @@ export default function ChatApp() {
     }
   }, [visibleMessages, initialScroll]);
 
+  useEffect(() => {
+    if (visibleMessages.length > 0) {
+      const lastMessageElement = document.getElementById(`message-${visibleMessages[visibleMessages.length - 1].id}`);
+      lastMessageElement?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [visibleMessages]);
+
   const handleSendMessage = (e: FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() && currentChat.current) {
@@ -189,17 +196,6 @@ export default function ChatApp() {
         }),
       })
         .then((response) => response.json())
-        // .then((data) => {
-        //   if (data.error) {
-        //     setAddUserError(data.error);
-        //     setTimeout(() => setAddUserError(""), 2000);
-        //     setAddUserInput("");
-        //   } else {
-        //     setAddUserInput("");
-        //     setAddUserError("");
-        //     toast.success("User added successfully!");
-        //   }
-        // })
         .catch(() => {
           setAddUserError("Username does not exist");
           setTimeout(() => setAddUserError(""), 2000);
@@ -409,59 +405,95 @@ export default function ChatApp() {
                 ))}
               </div>
               <div className="flex flex-col space-y-4 relative z-10">
-  {visibleMessages.map((message) => (
-    <div
-      key={message.id}
-      className={`max-w-max p-2 rounded shadow flex flex-col ${message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"}`}
-    >
-      <div className="flex items-center">
-        <span>{message.content}</span>
-        {message.senderUsername === username && (
-          <div className="relative ml-2">
-            <button
-              onClick={() => setDropdownVisible(dropdownVisible === message.id ? null : message.id)}
-              className="text-gray-900 hover:text-gray-700 transition duration-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6h.01M12 12h.01M12 18h.01" />
-              </svg>
-            </button>
-            {dropdownVisible === message.id && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+      {visibleMessages.map((message) => (
+        <div
+          key={message.id}
+          id={`message-${message.id}`}
+          className={`max-w-max p-2 rounded shadow flex flex-col ${
+            message.senderUsername === username ? "bg-orange-100 self-end" : "bg-gray-100 self-start"
+          } relative group`}
+        >
+          <div className="flex items-center">
+            {editingMessageId === message.id ? (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="p-2 border rounded"
+                  autoFocus
+                />
                 <button
                   onClick={() => {
-                    const newContent = prompt("Edit your message:", message.content);
-                    if (newContent !== null) {
-                      handleEditMessage(message.id, newContent);
-                    }
-                    setDropdownVisible(null);
+                    handleEditMessage(message.id, editedContent);
+                    setEditingMessageId(null);
                   }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
-                  Edit
+                  Save
                 </button>
+              </div>
+            ) : (
+              <span>{message.content}</span>
+            )}
+
+            {message.senderUsername === username && (
+              <div className="relative ml-2">
+                {/* Toggle dropdown visibility */}
                 <button
-                  onClick={() => {
-                    handleDeleteMessage(message.id);
-                    setDropdownVisible(null);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() =>
+                    setDropdownVisible(dropdownVisible === message.id ? null : message.id)
+                  }
+                  className="text-gray-900 hover:text-gray-700 transition duration-300 opacity-0 group-hover:opacity-100"
                 >
-                  Delete
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6h.01M12 12h.01M12 18h.01" />
+                  </svg>
                 </button>
+
+                {dropdownVisible === message.id && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                    <button
+                      onClick={() => {
+                        setEditingMessageId(message.id);
+                        setEditedContent(message.content);
+                        setDropdownVisible(null);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteMessage(message.id);
+                        setDropdownVisible(null);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
-      <div className="text-gray-500 text-xs italic mt-1">
-        {message.edited && <span>(edited)</span>}
-        <span className="block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
-      </div>
+
+          <div className="text-gray-500 text-xs italic mt-1">
+            {message.edited && <span>(edited)</span>}
+            <span className="block text-right">{new Date(message.timestamp).toLocaleTimeString()}</span>
+          </div>
+        </div>
+      ))}
+      <div ref={messagesEndRef} />
     </div>
-  ))}
-  <div ref={messagesEndRef} />
-</div>
+
             </main>
             <footer className="p-4 bg-orange-100 flex items-center">
   <form onSubmit={handleSendMessage} className="flex-grow flex space-x-2">

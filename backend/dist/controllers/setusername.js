@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setusername = void 0;
-const map_1 = require("../map");
+const map_1 = require("../serverconfig/map");
 const setusername = (socket, username) => __awaiter(void 0, void 0, void 0, function* () {
     map_1.map.set(username, socket.id);
     socket.data.username = username;

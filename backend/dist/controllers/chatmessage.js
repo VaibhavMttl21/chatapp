@@ -10,9 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.chatmessage = void 0;
-const io_1 = require("../io");
-const map_1 = require("../map");
-const prisma_1 = require("../prisma");
+const io_1 = require("../serverconfig/io");
+const map_1 = require("../serverconfig/map");
+const prisma_1 = require("../serverconfig/prisma");
 const chatmessage = (socket, data) => __awaiter(void 0, void 0, void 0, function* () {
     const { message, username, friendUsername } = data;
     try {
@@ -59,7 +59,6 @@ const chatmessage = (socket, data) => __awaiter(void 0, void 0, void 0, function
         }
     }
     catch (error) {
-        console.error("Error handling chat message:", error);
         socket.emit("chat message", { error: "Failed to send message" });
     }
 });

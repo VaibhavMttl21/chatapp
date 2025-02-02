@@ -10,11 +10,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletemessage = void 0;
-const io_1 = require("../io");
-const map_1 = require("../map");
+const io_1 = require("../serverconfig/io");
+const map_1 = require("../serverconfig/map");
 const deletemessage = (socket, data) => __awaiter(void 0, void 0, void 0, function* () {
     const { message, username, friendUsername, messageId } = data;
-    console.log("Delete request received:", { messageId, username }); // Debugging log
     if (!messageId) {
         socket.emit('delete-message', { error: "Message ID is required" });
         return;
@@ -25,9 +24,6 @@ const deletemessage = (socket, data) => __awaiter(void 0, void 0, void 0, functi
     }
     const senderSocketId = map_1.map.get(username);
     const receiverSocketId = map_1.map.get(friendUsername);
-    console.log("Delete request received:", { messageId, username });
-    // console.log(senderSocketId) // Debugging log
-    // console .log(receiverSocketId) // Debugging log
     io_1.io.to([senderSocketId || "", receiverSocketId || ""]).emit("delete-message", { messageId });
 });
 exports.deletemessage = deletemessage;

@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.signup = void 0;
-const prisma_1 = require("../prisma");
-const signup = (res, req) => __awaiter(void 0, void 0, void 0, function* () {
+const prisma_1 = require("../serverconfig/prisma");
+const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
     if (!username || !password) {
         res.status(400).json({ error: "Enter valid username or password" });
