@@ -22,7 +22,7 @@ export default function ChatApp() {
   const [authenticated, setAuthenticated] = useState("loading");
   const currentChat = useRef<string>(""); 
   const [contacts, setContacts] = useState<string[]>([]);
-  const [addUserError, setAddUserError] = useState<string>("");
+  const [addUserError] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
   const cookies = cookie.parse(document.cookie);
@@ -172,19 +172,14 @@ export default function ChatApp() {
       setInputValue("");
     }
   };
-
   const handleAddUser = () => {
     if (addUserInput.trim()) {
       if (contacts.includes(addUserInput)) {
-        setAddUserError("Friend already added");
-         setAddUserError(" ")
-        setTimeout(()=>{} ,2000);
+        toast.error("Friend already added");
         return;
       }
       if (addUserInput === username) {
-        setAddUserError("You cannot add yourself as a friend");
-        setAddUserError(" ")
-        setTimeout(()=>{} ,2000);
+        toast.error("You cannot add yourself as a friend");
         return;
       }
       fetch("http://localhost:3000/add-friend", {
@@ -196,13 +191,21 @@ export default function ChatApp() {
         }),
       })
         .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            toast.error(data.error);
+          } else {
+            setContacts((prevContacts) => [...prevContacts, addUserInput]);
+            setAddUserInput("");
+            toast.success(`Friend ${addUserInput} added successfully!`);
+          }
+        })
         .catch(() => {
-          setAddUserError("Username does not exist");
-          setTimeout(() => setAddUserError(""), 2000);
+          toast.error("Username does not exist");
         });
     }
   };
-
+  
   const handleDeleteUser = (friendUsername: string) => {
     fetch("http://localhost:3000/delete-friend", {
       method: "POST",
@@ -222,8 +225,11 @@ export default function ChatApp() {
             setVisibleMessages([]);
           }
         } else {
-          console.error(data.error || "Failed to delete friend");
+          toast.error(data.error || "Failed to delete friend");
         }
+      })
+      .catch(() => {
+        toast.error("Failed to delete friend");
       });
   };
 
@@ -323,27 +329,37 @@ export default function ChatApp() {
       {addUserError && <div className="text-red-500">{addUserError}</div>}
     </div>
     <div className="flex-grow overflow-y-auto">
-      {contacts.map((contact) => (
-        <button
-          key={contact}
-          className={`p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 border-b border-gray-300 ${currentChat.current === contact ? "bg-orange-200" : ""}`}
-          onClick={() => {
-            currentChat.current = contact;
-            const messages = messagesMap.get(contact) || [];
-            setVisibleMessages(messages);
-            setIsDeleteMode(false);
-          }}
-          onKeyDown={(e) => handleKeyDown(e, () => {
-            currentChat.current = contact;
-            const messages = messagesMap.get(contact) || [];
-            setVisibleMessages(messages);
-            setIsDeleteMode(false);
-          })}
-        >
-          {contact}
-        </button>
-      ))}
-    </div>
+  {contacts.map((contact) => (
+    <button
+      key={contact}
+      className={`p-2 w-full text-left cursor-pointer hover:bg-orange-200 transition duration-300 border-b border-gray-300 ${currentChat.current === contact ? "bg-orange-200" : ""}`}
+      onClick={() => {
+        if (currentChat.current === contact) {
+          currentChat.current = "";
+          setVisibleMessages([]);
+        } else {
+          currentChat.current = contact;
+          const messages = messagesMap.get(contact) || [];
+          setVisibleMessages(messages);
+        }
+        setIsDeleteMode(false);
+      }}
+      onKeyDown={(e) => handleKeyDown(e, () => {
+        if (currentChat.current === contact) {
+          currentChat.current = "";
+          setVisibleMessages([]);
+        } else {
+          currentChat.current = contact;
+          const messages = messagesMap.get(contact) || [];
+          setVisibleMessages(messages);
+        }
+        setIsDeleteMode(false);
+      })}
+    >
+      {contact}
+    </button>
+  ))}
+</div>
     <button
       className="bg-red-500 text-white p-2 m-2 rounded"
       onClick={() => setIsDeleteMode(!isDeleteMode)}
