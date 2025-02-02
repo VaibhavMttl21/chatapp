@@ -15,33 +15,47 @@ const deleteFriend = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     const { username, friendUsername } = req.body;
     const user = yield prisma_1.prisma.user.findUnique({
         where: {
-            username: username
-        }
+            username: username,
+        },
     });
     const friend = yield prisma_1.prisma.user.findUnique({
         where: {
-            username: friendUsername
-        }
+            username: friendUsername,
+        },
     });
     if (!user || !friend) {
         res.status(404).json({ error: "User not found" });
         return;
     }
+    yield prisma_1.prisma.message.deleteMany({
+        where: {
+            OR: [
+                {
+                    senderId: user.id,
+                    receiverId: friend.id,
+                },
+                {
+                    senderId: friend.id,
+                    receiverId: user.id,
+                },
+            ],
+        },
+    });
     yield prisma_1.prisma.user.update({
         where: { id: user.id },
         data: {
             friends: {
-                disconnect: { id: friend.id }
-            }
-        }
+                disconnect: { id: friend.id },
+            },
+        },
     });
     yield prisma_1.prisma.user.update({
         where: { id: friend.id },
         data: {
             friends: {
-                disconnect: { id: user.id }
-            }
-        }
+                disconnect: { id: user.id },
+            },
+        },
     });
     res.json({ message: "Success" });
 });
