@@ -1,11 +1,12 @@
+import { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
 
 export const handleDeleteUser = (
   friendUsername: string,
-  username,
-  setContacts,
-  currentChat,
-  setVisibleMessages
+  username: string,
+  setContacts: Dispatch<SetStateAction<string[]>>,
+  currentChat: React.MutableRefObject<string>,
+  setVisibleMessages: Dispatch<SetStateAction<any[]>>
 ) => {
   fetch("http://localhost:3000/delete-friend", {
     method: "POST",

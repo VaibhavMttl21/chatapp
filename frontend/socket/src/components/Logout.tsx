@@ -1,4 +1,4 @@
-export const Logout = (currentChat) =>
+export const Logout = (currentChat:string) =>
 {
     return (
         <div>

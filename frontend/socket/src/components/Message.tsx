@@ -1,16 +1,31 @@
 import { useRef, useState, useEffect } from "react";
 import { handleDeleteMessage } from "../utils/Deletefunctn";
 import { handleEditMessage } from "../utils/Editmessage";
+import { Socket } from "socket.io-client";
 
 interface Message {
   id: number;
   content: string;
   senderUsername: string;
   timestamp: string;
-  edited: Boolean;
+  edited: boolean;
 }
 
-export const Ed = ({ socket, username, currentChat,visibleMessages,setVisibleMessages }) => {
+interface EdProps {
+  socket: React.MutableRefObject<Socket | undefined>;
+  username: string;
+  currentChat: React.MutableRefObject<string>;
+  visibleMessages: Message[];
+  setVisibleMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+}
+
+export const Ed = ({
+  socket,
+  username,
+  currentChat,
+  visibleMessages,
+  setVisibleMessages,
+}: EdProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [dropdownVisible, setDropdownVisible] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -38,7 +53,7 @@ export const Ed = ({ socket, username, currentChat,visibleMessages,setVisibleMes
           setVisibleMessages(messages);
         });
     }
-  }, [currentChat.current, username]);
+  }, [currentChat.current, username, setVisibleMessages]);
 
   return (
     <>

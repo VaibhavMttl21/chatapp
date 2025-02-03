@@ -1,31 +1,33 @@
+import { Socket } from "socket.io-client";
+
 export const handleEditMessage = (
-    messageId: number,
-    newContent: string,
-    socket,
+  messageId: number,
+  newContent: string,
+  socket: React.MutableRefObject<Socket | undefined>,
+  username: string,
+  currentChat: React.MutableRefObject<string>
+) => {
+  socket.current?.emit("edit-message", {
+    messageId,
     username,
-    currentChat
-  ) => {
-    socket.current?.emit("edit-message", {
-      messageId,
+    newContent,
+    friendUsername: currentChat.current,
+  });
+
+  fetch("http://localhost:3000/edit-message", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       username,
+      messageId,
       newContent,
-      friendUsername: currentChat.current,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.error) {
+        console.error(data.error || "Failed to edit message");
+      }
     });
-  
-    fetch("http://localhost:3000/edit-message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username,
-        messageId,
-        newContent,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          console.error(data.error || "Failed to edit message");
-        }
-      });
-      console.log('Message edited')
-  };
+  console.log("Message edited");
+};

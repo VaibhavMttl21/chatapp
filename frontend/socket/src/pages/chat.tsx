@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import * as cookie from "cookie";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { SendMessage } from "../components/SendMessage";
 import { Ed } from "../components/Message";
 import { Background } from "../components/Background";
 import { Logout } from "../components/Logout";
 import { Deleteuser } from "../components/Deleteuser";
+import { verify } from "../utils/verify";
+import { getfriends } from "../utils/getfriends";
+import { Chatmessage } from "../socketcomp/chatmessage";
+import { Deletemessage } from "../socketcomp/deletemessage";
+import { Editmessage } from "../socketcomp/editmessage";
+import { FriendAddition } from "../socketcomp/friendaddition";
+import { Onconnect } from "../socketcomp/onconnect";
 
 interface Message {
   id: number;
@@ -27,45 +34,27 @@ export default function ChatApp() {
   const [isSidebarOpen] = useState<boolean>(true);
   const cookies = cookie.parse(document.cookie);
   const username = cookies.username;
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [initialScroll, setInitialScroll] = useState<boolean>(true);
 
-  
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });
     socket.current = socketIo;
 
     socket.current.on("connect", () => {
-      if (!socket.current) {
-        console.log("Socket not connected");
+      if (username) {
+        Onconnect(socket, username);
       } else {
-        socket.current.emit("setusername", username);
-        console.log("Sent username to server:", username);
+        console.error("Username is undefined");
       }
     });
 
     socket.current.on("chat message", (message: any) => {
-      console.log("newMessage",message)
-      const newMessage = {
-        id: message.message.id,
-        senderUsername: message.senderUsername,
-        content: message.message.content,
-        timestamp: message.message.timestamp,
-      } as Message;
-      if (
-        message.senderUsername === currentChat.current ||
-        username === message.senderUsername
-      ) {
-        setVisibleMessages((prevMessages) => [...prevMessages, newMessage]);
-      }
+      Chatmessage({ message, currentChat, username, setVisibleMessages });
     });
 
     socket.current.on(
       "delete-message",
       ({ messageId }: { messageId: number }) => {
-        setVisibleMessages((prevMessages) =>
-          prevMessages.filter((message) => message.id !== messageId)
-        );
+        Deletemessage(setVisibleMessages, messageId);
       }
     );
 
@@ -78,41 +67,19 @@ export default function ChatApp() {
         messageId: number;
         newContent: string;
       }) => {
-        setVisibleMessages((prevMessages) =>
-          prevMessages.map((message) =>
-            message.id === messageId
-              ? { ...message, content: newContent, edited: true }
-              : message
-          )
-        );
+        Editmessage(setVisibleMessages, messageId, newContent);
       }
     );
 
     socket.current.on(
       "friend-added",
       ({ friendUsername }: { friendUsername: string }) => {
-        setContacts((prevContacts) => [...prevContacts, friendUsername]);
-        toast.success(`Friend ${friendUsername} added successfully!`);
+        FriendAddition(friendUsername, setContacts);
       }
     );
 
-    fetch("http://localhost:3000/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setAuthenticated(data.message === "Success" ? "true" : "false");
-      });
-
-    fetch(`http://localhost:3000/getfriends?username=${username}`, {
-      method: "GET",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then((response) => response.json())
-      .then((data) => setContacts(data));
+    verify(username, setAuthenticated);
+    getfriends(username, setContacts);
 
     return () => {
       socket.current?.disconnect();
@@ -146,11 +113,11 @@ export default function ChatApp() {
           <div className="flex flex-col flex-grow relative chat-container">
             <Logout currentChat={currentChat}></Logout>
             <main className="flex-grow p-4 overflow-y-auto relative">
-                  <Background
-                  currentChat={currentChat}
-                  visibleMessages={visibleMessages}
-                  isSidebarOpen={isSidebarOpen}
-                    ></Background>
+              <Background
+                currentChat={currentChat}
+                visibleMessages={visibleMessages}
+                isSidebarOpen={isSidebarOpen}
+              ></Background>
               <div className="flex flex-col space-y-4 relative z-10">
                 <Ed
                   username={username}

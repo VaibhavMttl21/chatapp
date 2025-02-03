@@ -1,11 +1,12 @@
+import { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
 
 export const handleAddUser = (
-  addUserInput,
-  contacts,
-  username,
-  setVisibleMessages,
-  currentChat
+  addUserInput: string,
+  contacts: string[],
+  username: string,
+  setVisibleMessages: Dispatch<SetStateAction<any[]>>,
+  currentChat: React.MutableRefObject<string>
 ) => {
   if (addUserInput.trim()) {
     if (contacts.includes(addUserInput)) {
@@ -25,6 +26,15 @@ export const handleAddUser = (
       }),
     })
       .then((response) => response.json())
+      .then((data) => {
+        if (data.message === "Success") {
+          currentChat.current = "";
+          setVisibleMessages([]);
+          toast.success(`Friend ${addUserInput} added successfully!`);
+        } else {
+          toast.error(data.error || "Failed to add friend");
+        }
+      })
       .catch(() => {
         toast.error("Username does not exist");
       });

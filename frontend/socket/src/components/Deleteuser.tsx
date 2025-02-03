@@ -2,15 +2,15 @@ import { useState } from "react";
 import { handleDeleteUser } from "../utils/deleteuser";
 import { handleAddUser } from "../utils/addfriend";
 
-const handleKeyDown = (
-  e: React.KeyboardEvent<HTMLButtonElement>,
-  action: () => void
-) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    action();
-  }
-};
+interface DeleteUserProps {
+  contacts: string[];
+  setVisibleMessages: React.Dispatch<React.SetStateAction<any[]>>;
+  currentChat: React.MutableRefObject<string>;
+  username: string;
+  setContacts: React.Dispatch<React.SetStateAction<string[]>>;
+  isSidebarOpen: boolean;
+  messagesMap: Map<string, any[]>;
+}
 
 export const Deleteuser = ({
   contacts,
@@ -20,7 +20,7 @@ export const Deleteuser = ({
   setContacts,
   isSidebarOpen,
   messagesMap,
-}) => {
+}: DeleteUserProps) => {
   const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
   const [addUserError, setAddUserError] = useState<string>("");
   const [addUserInput, setAddUserInput] = useState<string>("");
@@ -75,19 +75,6 @@ export const Deleteuser = ({
                   }
                   setIsDeleteMode(false);
                 }}
-                onKeyDown={(e) =>
-                  handleKeyDown(e, () => {
-                    if (currentChat.current === contact) {
-                      currentChat.current = "";
-                      setVisibleMessages([]);
-                    } else {
-                      currentChat.current = contact;
-                      const messages = messagesMap.get(contact) || [];
-                      setVisibleMessages(messages);
-                    }
-                    setIsDeleteMode(false);
-                  })
-                }
               >
                 {contact}
               </button>

@@ -1,13 +1,19 @@
 import EmojiPicker from "emoji-picker-react";
 import { FormEvent, useState } from "react";
 import { toast } from "react-toastify";
+import { Socket } from "socket.io-client";
 
-export const SendMessage = ({ socket, currentChat, username }) => {
+interface SendMessageProps {
+  socket: React.MutableRefObject<Socket | undefined>;
+  currentChat: React.MutableRefObject<string>;
+  username: string;
+}
+
+export const SendMessage = ({ socket, currentChat, username }: SendMessageProps) => {
   const [emojiPickerVisible, setEmojiPickerVisible] = useState<boolean>(false);
   const [inputValue, setInputValue] = useState<string>("");
 
   const handleSendMessage = (e: FormEvent) => {
-    console.log("sdjbksjd",socket.current)
     e.preventDefault();
     if (inputValue.trim() && currentChat.current) {
       socket.current?.emit("chat message", {
