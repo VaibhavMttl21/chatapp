@@ -57,7 +57,6 @@ export const Background = ({
 
     updateIcons();
 
-    // Update icons dynamically on resize or content changes
     const resizeObserver = new ResizeObserver(() => updateIcons());
     const chatContainer = document.querySelector(".chat-container");
     if (chatContainer) {
@@ -73,7 +72,7 @@ export const Background = ({
 
   return (
     <>
-      {currentChat.current ? (
+      {!currentChat.current ? (
         <div className="absolute inset-0 z-0 chat-container">
           {iconPositions.map((pos, i) => (
             <div
@@ -104,11 +103,7 @@ export const Background = ({
             </div>
           ))}
         </div>
-      ) : (
-        <div className="flex items-center justify-center h-full text-gray-700">
-          Select a user to chat
-        </div>
-      )}
+      ) : null}
     </>
   );
 };

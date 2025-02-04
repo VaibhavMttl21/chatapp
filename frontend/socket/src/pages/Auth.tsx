@@ -4,13 +4,17 @@ import * as cookie from "cookie";
 
 export default function Auth() {
   const [isSignIn, setIsSignIn] = useState(false);
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const fn = () => {
+    if (!username || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
     if (isSignIn) {
       fetch("http://localhost:3000/signin", {
         method: "POST",
@@ -80,11 +84,10 @@ export default function Auth() {
 
   const generatePositions = () => {
     const positions = [];
-    // const gridSize = 40; // Grid size to prevent overlap
     const iconSize = 24; // Icon size in pixels
     const margin = 10; // Margin around icons
 
-    const width = window.innerWidth/2;
+    const width = window.innerWidth / 2;
     const height = window.innerHeight;
     const cols = Math.floor(width / (iconSize + margin));
     const rows = Math.floor(height / (iconSize + margin));
@@ -105,9 +108,8 @@ export default function Auth() {
   const iconPositions = generatePositions();
 
   return (
-      
     <div className="relative flex flex-col md:flex-row min-h-screen bg-gradient-to-r bg-orange-50">
-       <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0">
         {iconPositions.map((pos, i) => (
           <div
             key={i}

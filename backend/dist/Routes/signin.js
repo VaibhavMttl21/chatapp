@@ -8,22 +8,34 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.signin = void 0;
 const prisma_1 = require("../serverconfig/prisma");
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    prisma_1.prisma.user.findUnique({
+    const { username, password } = req.body;
+    if (!username || !password) {
+        res.status(400).json({ error: "Enter valid username or password" });
+        return;
+    }
+    prisma_1.prisma.user
+        .findUnique({
         where: {
-            username: req.body.username || ""
-        }
-    }).then((data) => {
-        if ((data === null || data === void 0 ? void 0 : data.password) === req.body.password) {
+            username: username,
+        },
+    })
+        .then((data) => __awaiter(void 0, void 0, void 0, function* () {
+        if (data && (yield bcrypt_1.default.compare(password, data.password))) {
             res.json({ message: "Success" });
         }
         else {
             res.status(401).json({ error: "Invalid credentials" });
         }
-    }).catch((error) => {
+    }))
+        .catch((error) => {
         res.status(401).json({ error: "Invalid credentials" });
     });
 });

@@ -8,24 +8,33 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.signup = void 0;
 const prisma_1 = require("../serverconfig/prisma");
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
     if (!username || !password) {
         res.status(400).json({ error: "Enter valid username or password" });
+        return;
     }
-    prisma_1.prisma.user.create({
+    const hashedPassword = yield bcrypt_1.default.hash(password, 10);
+    prisma_1.prisma.user
+        .create({
         data: {
             username: username,
-            password: password
-        }
-    }).then((data) => {
+            password: hashedPassword,
+        },
+    })
+        .then((data) => {
         res.json(data);
-    }).catch((error) => {
+    })
+        .catch((error) => {
         var _a;
-        if (error.code === 'P2002' && ((_a = error.meta) === null || _a === void 0 ? void 0 : _a.target.includes('username'))) {
+        if (error.code === "P2002" && ((_a = error.meta) === null || _a === void 0 ? void 0 : _a.target.includes("username"))) {
             res.status(409).json({ error: "Username already exists" });
         }
         else {
