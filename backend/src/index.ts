@@ -37,6 +37,10 @@ io.use((socket, next) => {
   next();
 });
 
+app.get('/', (req, res) => {
+  console.log("getting response");
+})
+
 app.post("/signup",signup);
 app.post("/signin", signin);
 app.post("/verify", verify);

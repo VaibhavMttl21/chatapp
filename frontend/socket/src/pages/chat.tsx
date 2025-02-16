@@ -21,7 +21,7 @@ interface Message {
   content: string;
   senderUsername: string;
   timestamp: string;
-  edited: Boolean;
+  edited: boolean;
 }
 
 export default function ChatApp() {
@@ -33,7 +33,7 @@ export default function ChatApp() {
   const [contacts, setContacts] = useState<string[]>([]);
   const [isSidebarOpen] = useState<boolean>(true);
   const cookies = cookie.parse(document.cookie);
-  const username = cookies.username;
+  const username = cookies.username || "";
 
   useEffect(() => {
     const socketIo = io("http://localhost:3000", { withCredentials: true });

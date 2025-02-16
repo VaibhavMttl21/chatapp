@@ -49,6 +49,9 @@ io_1.io.use((socket, next) => {
     console.log(socket.data.username);
     next();
 });
+io_1.app.get('/', (req, res) => {
+    console.log("getting response");
+});
 io_1.app.post("/signup", signup_1.signup);
 io_1.app.post("/signin", signin_1.signin);
 io_1.app.post("/verify", verify_1.verify);

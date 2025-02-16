@@ -22,7 +22,7 @@ export const Deleteuser = ({
   messagesMap,
 }: DeleteUserProps) => {
   const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
-  const [addUserError, setAddUserError] = useState<string>("");
+  const [addUserError,] = useState<string>("");
   const [addUserInput, setAddUserInput] = useState<string>("");
 
   return (
