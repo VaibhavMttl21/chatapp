@@ -14,7 +14,7 @@ export const handleEditMessage = (
     friendUsername: currentChat.current,
   });
 
-  fetch("http://localhost:3000/edit-message", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/edit-message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

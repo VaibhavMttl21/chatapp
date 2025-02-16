@@ -8,7 +8,7 @@ export const handleDeleteUser = (
   currentChat: React.MutableRefObject<string>,
   setVisibleMessages: Dispatch<SetStateAction<any[]>>
 ) => {
-  fetch("http://localhost:3000/delete-friend", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/delete-friend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

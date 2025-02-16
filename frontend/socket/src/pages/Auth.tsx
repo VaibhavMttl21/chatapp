@@ -16,7 +16,7 @@ export default function Auth() {
     }
 
     if (isSignIn) {
-      fetch("http://localhost:3000/signin", {
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -48,7 +48,7 @@ export default function Auth() {
           setError(error.message);
         });
     } else {
-      fetch("http://localhost:3000/signup", {
+      fetch(`${import.meta.env.VITE_BACKEND_URL}/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

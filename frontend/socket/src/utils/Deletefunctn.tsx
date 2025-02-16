@@ -21,7 +21,7 @@ export const handleDeleteMessage = (
     prevMessages.filter((message) => message.id !== messageId)
   );
 
-  fetch("http://localhost:3000/delete-message", {
+  fetch(`${import.meta.env.VITE_BACKEND_URL}/delete-message`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

@@ -36,7 +36,7 @@ export default function ChatApp() {
   const username = cookies.username || "";
 
   useEffect(() => {
-    const socketIo = io("http://localhost:3000", { withCredentials: true });
+    const socketIo = io(`${import.meta.env.VITE_BACKEND_URL}`, { withCredentials: true });
     socket.current = socketIo;
 
     socket.current.on("connect", () => {

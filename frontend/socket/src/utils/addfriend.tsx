@@ -17,7 +17,7 @@ export const handleAddUser = (
       toast.error("You cannot add yourself as a friend");
       return;
     }
-    fetch("http://localhost:3000/add-friend", {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/add-friend`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
