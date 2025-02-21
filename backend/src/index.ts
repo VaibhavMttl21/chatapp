@@ -20,7 +20,7 @@ import { editmessage } from "./controllers/editmessage";
 
 const buildPath = join(__dirname, "../../frontend/socket/dist");
 app.use(cors({
-  origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms"],
+  origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms","https://chatapp-opal-five.vercel.app"],
   methods: ["GET", "POST"],
   credentials: true
 })); 
@@ -28,8 +28,7 @@ app.use(express.static(buildPath));
 app.use(express.json()); 
 
 io.use((socket, next) => {
-  console.log("Query:", socket.handshake.headers.cookie);
-  socket.data.username = socket.handshake.headers.cookie?.split("=")[1];
+  socket.data.username = socket.handshake.headers.username;
   if (!socket.data.username) {
     return next(new Error("Authentication"));
   }

@@ -34,7 +34,7 @@ export const Ed = ({
   useEffect(() => {
     if (currentChat.current) {
       fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/?username=${username}&&friend=${currentChat.current}`,
+        `${import.meta.env.VITE_BACKEND_URL}/getmessages?username=${username}&&friend=${currentChat.current}`,
         {
           method: "GET",
           credentials: "include",

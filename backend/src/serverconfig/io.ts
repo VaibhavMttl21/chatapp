@@ -7,7 +7,7 @@ export const server = createServer(app);
 
 export const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms"],
+    origin: ["http://localhost:5173","https://ms3fdsn4-5173.inc1.devtunnels.ms","https://chatapp-opal-five.vercel.app"],
     methods: ["GET", "POST"],
     credentials: true
   }
